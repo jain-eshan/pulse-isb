@@ -15,7 +15,11 @@ const msalConfig: Configuration = {
 export const msalInstance = new PublicClientApplication(msalConfig);
 
 export const loginRequest = {
-  scopes: ["openid", "profile", "email", "User.Read"],
+  scopes: ["openid", "profile", "email", "User.Read", "Calendars.ReadWrite"],
+};
+
+export const graphRequest = {
+  scopes: ["Calendars.ReadWrite"],
 };
 
 export const ISB_EMAIL_DOMAIN = "isb.edu";

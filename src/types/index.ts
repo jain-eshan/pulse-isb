@@ -25,6 +25,9 @@ export interface User {
   location_sharing: boolean;
   avatar_url?: string;
   created_at: string;
+  interests: Interest[];
+  wa_phone?: string;
+  campus: "mohali" | "hyderabad";
 }
 
 export interface Place {
@@ -61,6 +64,64 @@ export interface UserLocation {
   lat: number;
   lng: number;
   updated_at: string;
+}
+
+export type Interest =
+  | "product"
+  | "consulting"
+  | "tech"
+  | "careers"
+  | "academics"
+  | "social";
+
+export const INTERESTS: { id: Interest; label: string; emoji: string }[] = [
+  { id: "product",    label: "Product",    emoji: "💡" },
+  { id: "consulting", label: "Consulting", emoji: "📊" },
+  { id: "tech",       label: "Tech",       emoji: "🤖" },
+  { id: "careers",    label: "Careers",    emoji: "🎯" },
+  { id: "academics",  label: "Academics",  emoji: "📚" },
+  { id: "social",     label: "Social",     emoji: "🎭" },
+];
+
+export interface Session {
+  id: string;
+  creator_id: string;
+  title: string;
+  description?: string;
+  starts_at: string;
+  ends_at?: string;
+  venue?: string;
+  tags: string[];
+  wa_event_id?: string;
+  wa_group_jid?: string;
+  archived: boolean;
+  created_at: string;
+  creator?: Pick<User, "id" | "name" | "avatar_url">;
+  rsvp_counts?: { going: number; maybe: number };
+  my_rsvp?: RsvpStatus;
+}
+
+export type RsvpStatus = "going" | "maybe" | "cant";
+
+export interface Rsvp {
+  session_id: string;
+  user_id: string;
+  status: RsvpStatus;
+  responded_via: "web" | "wa_native_event" | "bot_dm" | "calendar";
+  created_at: string;
+}
+
+export interface PulseItem {
+  id: string;
+  creator_id: string;
+  title: string;
+  description?: string;
+  tags: string[];
+  status: "open" | "planned" | "done";
+  linked_session_id?: string;
+  created_at: string;
+  vote_count?: number;
+  my_vote?: boolean;
 }
 
 export type VibeMeterPersona =
