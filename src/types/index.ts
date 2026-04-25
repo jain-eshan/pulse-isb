@@ -14,7 +14,6 @@ export type PlaceCity = "mohali" | "chandigarh" | "shimla" | "kasauli" | "dharam
 
 export interface User {
   id: string;
-  microsoft_id: string;
   name: string;
   email: string;
   section: string;

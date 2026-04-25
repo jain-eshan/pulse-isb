@@ -11,13 +11,13 @@ const DEMO_GOINGS: Going[] = [
   {
     id: "1", user_id: "u2", place_id: "6", going_at: new Date(Date.now() + 3 * 3600000).toISOString(),
     note: "Need 2 more for cab split", is_active: true, created_at: new Date().toISOString(),
-    user: { id: "u2", microsoft_id: "x", name: "Priya Sharma", email: "priya@isb.edu", section: "A", cohort_year: 2026, vibe_tags: ["Party Animal"], budget_min: 1000, budget_max: 5000, location_sharing: false, interests: [], campus: "mohali" as const, created_at: new Date().toISOString() },
+    user: { id: "u2",  name: "Priya Sharma", email: "priya@isb.edu", section: "A", cohort_year: 2026, vibe_tags: ["Party Animal"], budget_min: 1000, budget_max: 5000, location_sharing: false, interests: [], campus: "mohali" as const, created_at: new Date().toISOString() },
     place: SEED_PLACES.find(p => p.id === "6"),
   },
   {
     id: "2", user_id: "u3", place_id: "9", going_at: new Date(Date.now() + 2 * 86400000).toISOString(),
     note: "Kasauli Saturday morning. 6 seats in my car.", is_active: true, created_at: new Date().toISOString(),
-    user: { id: "u3", microsoft_id: "y", name: "Rahul Menon", email: "rahul@isb.edu", section: "C", cohort_year: 2026, vibe_tags: ["Explorer"], budget_min: 500, budget_max: 3000, location_sharing: false, interests: [], campus: "mohali" as const, created_at: new Date().toISOString() },
+    user: { id: "u3",  name: "Rahul Menon", email: "rahul@isb.edu", section: "C", cohort_year: 2026, vibe_tags: ["Explorer"], budget_min: 500, budget_max: 3000, location_sharing: false, interests: [], campus: "mohali" as const, created_at: new Date().toISOString() },
     place: SEED_PLACES.find(p => p.id === "9"),
   },
 ];

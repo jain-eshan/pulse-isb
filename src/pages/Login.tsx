@@ -1,89 +1,117 @@
 import { useState } from "react";
+import { Mail, ArrowRight, CheckCircle2 } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
 import Logo from "../components/Logo";
-import { COLOR, SHADOW } from "../lib/pulseTheme";
+import { COLOR } from "../lib/pulseTheme";
 
-type Props = { onLogin: () => void };
-
-export default function Login({ onLogin }: Props) {
-  const { signIn, error, isDemo } = useAuth();
+export default function Login() {
+  const { sendMagicLink } = useAuth();
+  const [email, setEmail] = useState("");
   const [busy, setBusy] = useState(false);
+  const [sent, setSent] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  async function handleSignIn() {
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
     setBusy(true);
-    const u = await signIn();
-    setBusy(false);
-    if (u) onLogin();
+    setError(null);
+    const err = await sendMagicLink(email);
+    if (err) {
+      setError(err);
+      setBusy(false);
+    } else {
+      setSent(true);
+      setBusy(false);
+    }
   }
 
   return (
     <div
-      className="min-h-screen flex items-center justify-center px-5"
+      className="min-h-screen flex flex-col items-center justify-center px-5"
       style={{ background: COLOR.bg }}
     >
       <div className="w-full max-w-sm">
-        {/* Wordmark + tagline */}
-        <div className="mb-12 text-center">
-          <div className="flex justify-center mb-5">
-            <Logo height={44} />
-          </div>
-          <p className="t-italic text-lg">Find your people. Find the moment.</p>
+        <div className="mb-10 flex justify-center">
+          <Logo height={36} />
         </div>
 
-        {/* Card */}
-        <div
-          className="card p-7"
-          style={{ boxShadow: SHADOW.card }}
-        >
-          <h2 className="t-heading mb-1">Welcome</h2>
-          <p className="t-body mb-6">
-            Sign in with your ISB Microsoft account to continue.
-          </p>
-
-          <button
-            onClick={handleSignIn}
-            disabled={busy}
-            className="btn-primary w-full flex items-center justify-center gap-3"
-            style={{ padding: "14px 0" }}
-          >
-            {busy ? (
-              "Signing in…"
-            ) : (
-              <>
-                <svg viewBox="0 0 23 23" width="18" height="18">
-                  <path fill="#f3f3f3" d="M0 0h11v11H0z" />
-                  <path fill="#f35325" d="M12 0h11v11H12z" />
-                  <path fill="#81bc06" d="M0 12h11v11H0z" />
-                  <path fill="#ffba08" d="M12 12h11v11H12z" />
-                </svg>
-                Sign in with Microsoft
-              </>
-            )}
-          </button>
-
-          {error && (
-            <p
-              className="mt-4 text-sm font-medium"
-              style={{ color: "#B91C1C" }}
+        {sent ? (
+          <div className="text-center">
+            <div
+              className="w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-5"
+              style={{ background: COLOR.navyTint }}
             >
-              {error}
+              <CheckCircle2 size={28} style={{ color: COLOR.navy }} />
+            </div>
+            <h1 className="t-heading mb-2" style={{ fontSize: 22 }}>Check your inbox</h1>
+            <p className="t-body" style={{ color: COLOR.ink2 }}>
+              We sent a login link to{" "}
+              <strong style={{ color: COLOR.ink }}>{email}</strong>.
+              Click it to sign in — no password needed.
             </p>
-          )}
-
-          <div className="flex items-center gap-3 mt-6">
-            <div className="flex-1 h-px" style={{ background: COLOR.borderLight }} />
-            <span className="t-label">ISB only</span>
-            <div className="flex-1 h-px" style={{ background: COLOR.borderLight }} />
+            <button
+              className="t-meta mt-6 hover:opacity-70"
+              style={{ color: COLOR.ink3 }}
+              onClick={() => { setSent(false); setEmail(""); }}
+            >
+              Use a different email
+            </button>
           </div>
-          <p className="t-meta text-center mt-3">
-            Access restricted to @isb.edu accounts
-          </p>
-        </div>
+        ) : (
+          <>
+            <h1 className="t-display mb-1" style={{ fontSize: 30 }}>
+              Find your people.
+              <br />
+              <span className="t-italic">Find the moment.</span>
+            </h1>
+            <p className="t-body mb-8" style={{ color: COLOR.ink2 }}>
+              Peer sessions, wishlist ideas, and the spots your cohort actually goes — for ISB Mohali PGP Co'27.
+            </p>
 
-        {isDemo && (
-          <p className="t-meta text-center mt-6 italic">
-            Demo mode — Azure AD not configured. Clicking sign-in creates a local demo profile.
-          </p>
+            <form onSubmit={handleSubmit} className="space-y-3">
+              <div className="relative">
+                <Mail
+                  size={16}
+                  strokeWidth={1.75}
+                  className="absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none"
+                  style={{ color: COLOR.ink3 }}
+                />
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="yourname@isb.edu"
+                  required
+                  autoFocus
+                  className="w-full pl-11 pr-4 py-3.5 rounded-[12px] text-sm focus:outline-none focus:ring-2"
+                  style={{
+                    border: `1.5px solid ${error ? "#FECACA" : COLOR.border}`,
+                    background: COLOR.surface,
+                    color: COLOR.ink,
+                    fontFamily: "'Plus Jakarta Sans', sans-serif",
+                  }}
+                />
+              </div>
+
+              {error && (
+                <p className="text-sm px-1" style={{ color: "#B91C1C" }}>{error}</p>
+              )}
+
+              <button
+                type="submit"
+                disabled={busy || !email.trim()}
+                className="btn-primary w-full flex items-center justify-center gap-2"
+              >
+                {busy ? "Sending…" : (
+                  <>Send login link <ArrowRight size={15} /></>
+                )}
+              </button>
+            </form>
+
+            <p className="t-meta text-center mt-8" style={{ color: COLOR.ink3 }}>
+              ISB email only · no password needed
+            </p>
+          </>
         )}
       </div>
     </div>

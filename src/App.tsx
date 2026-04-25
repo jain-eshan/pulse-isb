@@ -43,7 +43,7 @@ export default function App() {
   }
 
   if (!user) {
-    return <Login onLogin={() => window.location.reload()} />;
+    return <Login />;
   }
 
   if (!user.section || !user.interests?.length) {
