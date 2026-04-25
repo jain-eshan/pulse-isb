@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ArrowLeft, Sparkles } from "lucide-react";
+import { ArrowLeft, Sparkles, AlertCircle } from "lucide-react";
 import { useSessions } from "../hooks/useSessions";
 import type { User, Interest } from "../types";
 import { INTERESTS } from "../types";
@@ -19,12 +19,14 @@ export default function SessionNew({ user, onDone }: Props) {
   const [tags, setTags] = useState<Interest[]>([]);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [parseWarn, setParseWarn] = useState(false);
 
   async function handleParse() {
     if (!paste.trim()) return;
     tap();
     setBusy(true);
     setErr(null);
+    setParseWarn(false);
     try {
       const r = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/parse-session`,
@@ -47,7 +49,8 @@ export default function SessionNew({ user, onDone }: Props) {
         setTags(parsed.tags.filter((t: string) => INTERESTS.some((i) => i.id === t)) as Interest[]);
       setMode("form");
     } catch {
-      setErr("Couldn't parse — fill it in manually.");
+      // Parsing failed — drop into manual form with a soft warning (not a hard error)
+      setParseWarn(true);
       setMode("form");
     } finally {
       setBusy(false);
@@ -129,18 +132,28 @@ export default function SessionNew({ user, onDone }: Props) {
 
         {mode === "form" && (
           <div className="card p-6 space-y-5">
+            {/* Soft parse warning — not a hard error */}
+            {parseWarn && (
+              <div
+                className="flex items-start gap-3 rounded-[10px] px-4 py-3 text-sm"
+                style={{ background: COLOR.amberTint, border: `1px solid ${COLOR.amber}22` }}
+              >
+                <AlertCircle size={16} strokeWidth={1.75} style={{ color: COLOR.amber, flexShrink: 0, marginTop: 1 }} />
+                <p style={{ color: "#7A5000" }}>
+                  Auto-parse isn't available right now. Fill in the details below — it only takes a moment.
+                </p>
+              </div>
+            )}
+
             {err && (
               <div
                 className="rounded-[10px] px-4 py-3 text-sm"
-                style={{
-                  background: "#FEF2F2",
-                  border: "1px solid #FECACA",
-                  color: "#B91C1C",
-                }}
+                style={{ background: "#FEF2F2", border: "1px solid #FECACA", color: "#B91C1C" }}
               >
                 {err}
               </div>
             )}
+
             <Field label="Title">
               <Input value={title} onChange={setTitle} placeholder="e.g. FADM P2P — Chapter 3" />
             </Field>
@@ -186,17 +199,10 @@ export default function SessionNew({ user, onDone }: Props) {
             </Field>
 
             <div className="flex gap-2 pt-2">
-              <button
-                onClick={() => setMode("paste")}
-                className="btn-ghost"
-              >
+              <button onClick={() => { setParseWarn(false); setMode("paste"); }} className="btn-ghost">
                 ← Paste instead
               </button>
-              <button
-                onClick={handleSubmit}
-                disabled={busy}
-                className="btn-primary flex-1"
-              >
+              <button onClick={handleSubmit} disabled={busy} className="btn-primary flex-1">
                 {busy ? "Posting…" : "Post session"}
               </button>
             </div>
@@ -216,30 +222,14 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   );
 }
 
-function Input({
-  value,
-  onChange,
-  placeholder,
-  type = "text",
-}: {
-  value: string;
-  onChange: (v: string) => void;
-  placeholder?: string;
-  type?: string;
+function Input({ value, onChange, placeholder, type = "text" }: {
+  value: string; onChange: (v: string) => void; placeholder?: string; type?: string;
 }) {
   return (
     <input
-      type={type}
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      placeholder={placeholder}
+      type={type} value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder}
       className="w-full px-4 py-3 rounded-[10px] text-sm focus:outline-none focus:ring-2"
-      style={{
-        border: `1px solid ${COLOR.border}`,
-        background: COLOR.surface,
-        color: COLOR.ink,
-        fontFamily: "'Plus Jakarta Sans', sans-serif",
-      }}
+      style={{ border: `1px solid ${COLOR.border}`, background: COLOR.surface, color: COLOR.ink, fontFamily: "'Plus Jakarta Sans', sans-serif" }}
     />
   );
 }
@@ -249,7 +239,5 @@ function toLocalDatetime(iso: string): string {
     const d = new Date(iso);
     const pad = (n: number) => String(n).padStart(2, "0");
     return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-  } catch {
-    return "";
-  }
+  } catch { return ""; }
 }

@@ -4,7 +4,6 @@ import { ArrowLeft, MapPin, Share2, Clock } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import { useSessions } from "../hooks/useSessions";
 import { fireConfetti } from "../components/Confetti";
-import { sendCalendarInvite } from "../lib/graph";
 import { COLOR, INTEREST_COLOR, stripGradient } from "../lib/pulseTheme";
 import { tap, success } from "../lib/haptics";
 import type { Session, User, RsvpStatus } from "../types";
@@ -47,8 +46,7 @@ export default function SessionDetail({ session, user, onBack }: Props) {
     if (status === "going" && !wasGoing) {
       success();
       fireConfetti();
-      showToast("You're in. Calendar invite on its way.");
-      sendCalendarInvite(session).catch(() => {});
+      showToast("You're in! Share the link with your study group.");
     }
     setBusy(false);
   }
