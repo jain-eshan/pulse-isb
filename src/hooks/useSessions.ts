@@ -16,7 +16,7 @@ export function useSessions(user: User | null) {
         rsvps(user_id,status)
       `)
       .eq("archived", false)
-      .gte("starts_at", new Date(Date.now() - 6 * 3600 * 1000).toISOString())
+      .gte("starts_at", startOfTodayIST())
       .order("starts_at", { ascending: true });
 
     if (error) {
@@ -70,4 +70,20 @@ export function useSessions(user: User | null) {
   }
 
   return { sessions, loading, createSession, rsvp, refresh };
+}
+
+/** Returns ISO string for midnight today in IST (UTC+5:30) */
+function startOfTodayIST(): string {
+  const now = new Date();
+  // Shift to IST, zero the time, shift back
+  const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
+  const istNow = new Date(now.getTime() + IST_OFFSET_MS);
+  const istMidnight = new Date(Date.UTC(
+    istNow.getUTCFullYear(),
+    istNow.getUTCMonth(),
+    istNow.getUTCDate(),
+    0, 0, 0, 0
+  ));
+  // Convert back to UTC
+  return new Date(istMidnight.getTime() - IST_OFFSET_MS).toISOString();
 }
