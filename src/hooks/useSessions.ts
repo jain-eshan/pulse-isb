@@ -8,16 +8,20 @@ export function useSessions(user: User | null) {
 
   const refresh = useCallback(async () => {
     if (!user) return;
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("sessions")
       .select(`
         *,
-        creator:users!sessions_creator_id_fkey(id,name,avatar_url),
+        creator:users(id,name,avatar_url),
         rsvps(user_id,status)
       `)
       .eq("archived", false)
       .gte("starts_at", new Date(Date.now() - 6 * 3600 * 1000).toISOString())
       .order("starts_at", { ascending: true });
+
+    if (error) {
+      console.error("[useSessions] query error:", error);
+    }
 
     const mapped: Session[] = (data ?? []).map((s: any) => ({
       ...s,
