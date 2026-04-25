@@ -1,25 +1,22 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 
-const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY")!;
-const GEMINI_URL =
-  `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`;
+const GROQ_API_KEY = Deno.env.get("GROQ_API_KEY")!;
+const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
 
-const SYSTEM_PROMPT = `You extract structured session data from informal WhatsApp announcements for an MBA cohort at ISB (Indian School of Business).
+const today = new Date().toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" });
 
-Return STRICT JSON matching this schema — no prose, no markdown fences, just raw valid JSON:
+const SYSTEM_PROMPT = `You extract structured session data from informal WhatsApp announcements for an MBA cohort at ISB (Indian School of Business). Today is ${today} (Asia/Kolkata timezone).
+
+Return ONLY raw valid JSON — no prose, no markdown fences:
 {
   "title": string,
   "description": string,
-  "starts_at": ISO-8601 string (assume Asia/Kolkata timezone; infer from context like "tonight", "tomorrow", etc.),
+  "starts_at": "ISO-8601 timestamp in Asia/Kolkata timezone — infer from words like tonight/tomorrow/9PM",
   "venue": string,
-  "tags": string[]
+  "tags": ["subset of: product, consulting, tech, careers, academics, social"]
 }
 
-Rules:
-- tags must only use values from this list: ["product","consulting","tech","careers","academics","social"]
-- If a field cannot be determined, use empty string or empty array.
-- starts_at must always be a valid ISO-8601 timestamp.
-- Today's date is ${new Date().toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" })}.`;
+Rules: use empty string for unknown text fields, empty array for unknown tags.`;
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -32,40 +29,34 @@ Deno.serve(async (req) => {
       return json({ error: "text is required (min 10 chars)" }, 400);
     }
 
-    const res = await fetch(GEMINI_URL, {
+    const res = await fetch(GROQ_URL, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${GROQ_API_KEY}`,
+      },
       body: JSON.stringify({
-        system_instruction: {
-          parts: [{ text: SYSTEM_PROMPT }],
-        },
-        contents: [
-          {
-            role: "user",
-            parts: [{ text: text.slice(0, 2000) }],
-          },
+        model: "llama3-8b-8192",
+        temperature: 0.1,
+        max_tokens: 600,
+        messages: [
+          { role: "system", content: SYSTEM_PROMPT },
+          { role: "user", content: text.slice(0, 2000) },
         ],
-        generationConfig: {
-          temperature: 0.1,
-          maxOutputTokens: 600,
-        },
       }),
     });
 
     if (!res.ok) {
       const errText = await res.text();
-      return json({ error: `Gemini error: ${errText}` }, 500);
+      return json({ error: `Groq error: ${errText}` }, 500);
     }
 
-    const geminiResponse = await res.json();
-    const raw = geminiResponse?.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
+    const data = await res.json();
+    const raw = data?.choices?.[0]?.message?.content ?? "";
     const match = raw.match(/\{[\s\S]*\}/);
-    if (!match) {
-      return json({ error: "could not extract JSON from model response" }, 500);
-    }
+    if (!match) return json({ error: "could not extract JSON from model response" }, 500);
 
-    const parsed = JSON.parse(match[0]);
-    return json(parsed);
+    return json(JSON.parse(match[0]));
   } catch (e) {
     return json({ error: String(e) }, 500);
   }
