@@ -1,7 +1,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 
-const GROQ_API_KEY = Deno.env.get("GROQ_API_KEY")!;
-const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
+const OPENROUTER_API_KEY = Deno.env.get("OPENROUTER_API_KEY")!;
+const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
 
 const today = new Date().toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" });
 
@@ -29,14 +29,16 @@ Deno.serve(async (req) => {
       return json({ error: "text is required (min 10 chars)" }, 400);
     }
 
-    const res = await fetch(GROQ_URL, {
+    const res = await fetch(OPENROUTER_URL, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${GROQ_API_KEY}`,
+        "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
+        "HTTP-Referer": "https://pulse-isb.vercel.app",
+        "X-Title": "Pulse ISB",
       },
       body: JSON.stringify({
-        model: "llama3-8b-8192",
+        model: "openai/gpt-oss-20b:free",
         temperature: 0.1,
         max_tokens: 600,
         messages: [
@@ -48,7 +50,7 @@ Deno.serve(async (req) => {
 
     if (!res.ok) {
       const errText = await res.text();
-      return json({ error: `Groq error: ${errText}` }, 500);
+      return json({ error: `OpenRouter error: ${errText}` }, 500);
     }
 
     const data = await res.json();
