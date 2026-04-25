@@ -1,64 +1,90 @@
 import { useState } from "react";
 import { useAuth } from "../hooks/useAuth";
+import Logo from "../components/Logo";
+import { COLOR, SHADOW } from "../lib/pulseTheme";
 
-interface LoginProps {
-  onLogin: () => void;
-}
+type Props = { onLogin: () => void };
 
-export default function Login({ onLogin }: LoginProps) {
-  const { signIn, error } = useAuth();
-  const [loading, setLoading] = useState(false);
+export default function Login({ onLogin }: Props) {
+  const { signIn, error, isDemo } = useAuth();
+  const [busy, setBusy] = useState(false);
 
   async function handleSignIn() {
-    setLoading(true);
-    const user = await signIn();
-    setLoading(false);
-    if (user) onLogin();
+    setBusy(true);
+    const u = await signIn();
+    setBusy(false);
+    if (u) onLogin();
   }
 
   return (
-    <div className="min-h-screen bg-linen flex items-center justify-center px-6 py-12">
+    <div
+      className="min-h-screen flex items-center justify-center px-5"
+      style={{ background: COLOR.bg }}
+    >
       <div className="w-full max-w-sm">
-        <div className="mb-12">
-          <p className="text-xs font-bold text-ink-3 uppercase tracking-[0.1em] mb-3">ISB Mohali</p>
-          <h1 className="font-serif text-[40px] leading-[1.05] text-ink">
-            Find the moment.
-          </h1>
-          <p className="font-serif italic text-navy text-[20px] mt-1">
-            Find your people.
+        {/* Wordmark + tagline */}
+        <div className="mb-12 text-center">
+          <div className="flex justify-center mb-5">
+            <Logo height={44} />
+          </div>
+          <p className="t-italic text-lg">Find your people. Find the moment.</p>
+        </div>
+
+        {/* Card */}
+        <div
+          className="card p-7"
+          style={{ boxShadow: SHADOW.card }}
+        >
+          <h2 className="t-heading mb-1">Welcome</h2>
+          <p className="t-body mb-6">
+            Sign in with your ISB Microsoft account to continue.
           </p>
-          <p className="text-ink-2 mt-5 text-sm leading-relaxed">
-            A private discovery and coordination space for the cohort.
+
+          <button
+            onClick={handleSignIn}
+            disabled={busy}
+            className="btn-primary w-full flex items-center justify-center gap-3"
+            style={{ padding: "14px 0" }}
+          >
+            {busy ? (
+              "Signing in…"
+            ) : (
+              <>
+                <svg viewBox="0 0 23 23" width="18" height="18">
+                  <path fill="#f3f3f3" d="M0 0h11v11H0z" />
+                  <path fill="#f35325" d="M12 0h11v11H12z" />
+                  <path fill="#81bc06" d="M0 12h11v11H0z" />
+                  <path fill="#ffba08" d="M12 12h11v11H12z" />
+                </svg>
+                Sign in with Microsoft
+              </>
+            )}
+          </button>
+
+          {error && (
+            <p
+              className="mt-4 text-sm font-medium"
+              style={{ color: "#B91C1C" }}
+            >
+              {error}
+            </p>
+          )}
+
+          <div className="flex items-center gap-3 mt-6">
+            <div className="flex-1 h-px" style={{ background: COLOR.borderLight }} />
+            <span className="t-label">ISB only</span>
+            <div className="flex-1 h-px" style={{ background: COLOR.borderLight }} />
+          </div>
+          <p className="t-meta text-center mt-3">
+            Access restricted to @isb.edu accounts
           </p>
         </div>
 
-        <button
-          onClick={handleSignIn}
-          disabled={loading}
-          className="w-full flex items-center justify-center gap-3 bg-navy hover:bg-navy-deep text-white text-[13px] font-semibold rounded-md px-5 py-3 shadow-navy transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
-        >
-          {loading ? (
-            <div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
-          ) : (
-            <svg viewBox="0 0 23 23" className="w-4 h-4" xmlns="http://www.w3.org/2000/svg">
-              <path fill="#f3f3f3" d="M0 0h11v11H0z" />
-              <path fill="#f35325" d="M12 0h11v11H12z" />
-              <path fill="#81bc06" d="M0 12h11v11H0z" />
-              <path fill="#ffba08" d="M12 12h11v11H12z" />
-            </svg>
-          )}
-          {loading ? "Signing in…" : "Continue with Microsoft"}
-        </button>
-
-        {error && (
-          <div className="mt-4 px-4 py-3 rounded-md border border-red-200 bg-red-50 text-red-700 text-sm">
-            {error}
-          </div>
+        {isDemo && (
+          <p className="t-meta text-center mt-6 italic">
+            Demo mode — Azure AD not configured. Clicking sign-in creates a local demo profile.
+          </p>
         )}
-
-        <p className="mt-8 text-xs text-ink-3">
-          Access restricted to <span className="text-amber font-semibold">@isb.edu</span> accounts.
-        </p>
       </div>
     </div>
   );

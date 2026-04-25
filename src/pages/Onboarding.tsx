@@ -2,216 +2,217 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import type { User, Interest } from "../types";
 import { INTERESTS } from "../types";
-import { HERO_GRADIENT, CTA_GRADIENT } from "../lib/pulseTheme";
+import { COLOR } from "../lib/pulseTheme";
+import Logo from "../components/Logo";
 
 type Props = {
   user: User;
-  onComplete: (updates: Partial<User>) => void | Promise<void>;
+  onComplete: (updates: Partial<User>) => void;
 };
 
-const SECTIONS = ["A","B","C","D","E","F","G","H"] as const;
+const SECTIONS = ["A", "B", "C", "D", "E", "F", "G", "H"];
 
 export default function Onboarding({ user, onComplete }: Props) {
   const [step, setStep] = useState(0);
+  const [name, setName] = useState(user.name || "");
   const [section, setSection] = useState(user.section || "");
-  const [campus, setCampus] = useState<User["campus"]>(user.campus || "mohali");
+  const [campus, setCampus] = useState<"mohali" | "hyderabad">(user.campus || "mohali");
   const [interests, setInterests] = useState<Interest[]>(user.interests || []);
 
-  const stepCount = 3;
-  const canNext =
-    (step === 0 && !!section && !!campus) ||
-    (step === 1 && interests.length >= 1) ||
-    step === 2;
-
-  async function handleFinish() {
-    await onComplete({ section, campus, interests });
+  function toggle(i: Interest) {
+    setInterests((prev) => (prev.includes(i) ? prev.filter((x) => x !== i) : [...prev, i]));
   }
+
+  function finish() {
+    onComplete({ name: name.trim(), section, campus, interests });
+  }
+
+  const canAdvance = [
+    name.trim().length > 1,
+    !!section,
+    interests.length >= 2,
+  ];
 
   return (
     <div
-      className="min-h-screen w-full flex flex-col text-white"
-      style={{ background: HERO_GRADIENT }}
+      className="min-h-screen flex items-start md:items-center justify-center px-5 py-10"
+      style={{ background: COLOR.bg }}
     >
-      <header className="px-6 pt-12 pb-6 flex items-center gap-3">
-        <div className="w-9 h-9 rounded-xl bg-white/10 backdrop-blur flex items-center justify-center text-lg">
-          ⚡
+      <div className="w-full max-w-md">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-8">
+          <Logo height={28} />
+          <span className="t-label">Step {step + 1} of 3</span>
         </div>
-        <p className="font-bold text-lg tracking-tight">Pulse</p>
-        <div className="ml-auto flex gap-1.5">
-          {Array.from({ length: stepCount }).map((_, i) => (
+
+        {/* Progress */}
+        <div className="flex gap-1.5 mb-8">
+          {[0, 1, 2].map((i) => (
             <div
               key={i}
-              className={`h-1.5 rounded-full transition-all duration-300 ${
-                i <= step ? "bg-white w-6" : "bg-white/30 w-3"
-              }`}
+              className="flex-1 h-1 rounded-full transition-colors duration-300"
+              style={{
+                background: i <= step ? COLOR.navy : COLOR.border,
+              }}
             />
           ))}
         </div>
-      </header>
 
-      <main className="flex-1 px-6 pb-24 max-w-md mx-auto w-full">
-        <AnimatePresence mode="wait">
-          {step === 0 && (
-            <motion.div
-              key="s0"
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -12 }}
-              transition={{ duration: 0.25 }}
-            >
-              <h1 className="text-3xl font-bold leading-tight mb-2 mt-4">
-                Welcome, {user.name.split(" ")[0]} 👋
-              </h1>
-              <p className="text-white/70 mb-8">First up — who are you?</p>
+        <div className="card p-7 min-h-[360px] flex flex-col">
+          <AnimatePresence mode="wait">
+            {step === 0 && (
+              <motion.div
+                key="s0"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                transition={{ duration: 0.2 }}
+                className="flex-1 flex flex-col"
+              >
+                <h1 className="t-display mb-2" style={{ fontSize: 28 }}>
+                  Let's set you up.
+                </h1>
+                <p className="t-body mb-6">
+                  A few quick questions, and you're in.
+                </p>
 
-              <p className="text-xs uppercase tracking-wider text-white/50 mb-3">Campus</p>
-              <div className="grid grid-cols-2 gap-3 mb-8">
-                {(["mohali", "hyderabad"] as const).map((c) => (
-                  <button
-                    key={c}
-                    onClick={() => setCampus(c)}
-                    className={`py-4 rounded-2xl border text-left px-4 transition-all ${
-                      campus === c
-                        ? "bg-white/20 border-white/40 scale-105"
-                        : "bg-white/5 border-white/10"
-                    }`}
-                  >
-                    <p className="font-semibold capitalize">{c}</p>
-                    <p className="text-xs text-white/60 mt-0.5">
-                      {c === "mohali" ? "🏔️ North Campus" : "🏙️ South Campus"}
-                    </p>
-                  </button>
-                ))}
-              </div>
+                <div className="mb-5">
+                  <label className="t-label block mb-2">What do people call you?</label>
+                  <input
+                    autoFocus
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="First name is fine"
+                    className="w-full px-4 py-3 text-[15px] rounded-[10px] border bg-white focus:outline-none focus:ring-2"
+                    style={{
+                      borderColor: COLOR.border,
+                      color: COLOR.ink,
+                      fontFamily: "'Plus Jakarta Sans', sans-serif",
+                    }}
+                  />
+                </div>
 
-              <p className="text-xs uppercase tracking-wider text-white/50 mb-3">Section</p>
-              <div className="grid grid-cols-4 gap-2.5">
-                {SECTIONS.map((s) => (
-                  <button
-                    key={s}
-                    onClick={() => setSection(s)}
-                    className={`py-4 rounded-2xl font-bold text-lg border transition-all ${
-                      section === s
-                        ? "bg-white text-[#16213e] border-white scale-105 shadow-lg"
-                        : "bg-white/5 border-white/10 text-white hover:bg-white/10"
-                    }`}
-                  >
-                    {s}
-                  </button>
-                ))}
-              </div>
-            </motion.div>
-          )}
+                <div>
+                  <label className="t-label block mb-2">Which campus?</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {[
+                      { id: "mohali", label: "Mohali" },
+                      { id: "hyderabad", label: "Hyderabad" },
+                    ].map((c) => (
+                      <button
+                        key={c.id}
+                        onClick={() => setCampus(c.id as "mohali" | "hyderabad")}
+                        className="chip"
+                        data-active={campus === c.id}
+                        style={{ padding: "10px 0", textAlign: "center" }}
+                      >
+                        {c.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </motion.div>
+            )}
 
-          {step === 1 && (
-            <motion.div
-              key="s1"
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -12 }}
-              transition={{ duration: 0.25 }}
-            >
-              <h1 className="text-3xl font-bold leading-tight mb-2 mt-4">
-                What do you nerd out on?
-              </h1>
-              <p className="text-white/70 mb-8">
-                Pick at least one. We'll tailor your Sessions feed.
-              </p>
+            {step === 1 && (
+              <motion.div
+                key="s1"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                transition={{ duration: 0.2 }}
+                className="flex-1 flex flex-col"
+              >
+                <h1 className="t-display mb-2" style={{ fontSize: 28 }}>
+                  Your <span className="t-italic">section</span>?
+                </h1>
+                <p className="t-body mb-6">
+                  So we can show you what's happening close to home.
+                </p>
 
-              <div className="grid grid-cols-2 gap-3">
-                {INTERESTS.map((it) => {
-                  const on = interests.includes(it.id);
-                  return (
+                <div className="grid grid-cols-4 gap-2">
+                  {SECTIONS.map((s) => (
+                    <button
+                      key={s}
+                      onClick={() => setSection(s)}
+                      className="chip font-serif"
+                      data-active={section === s}
+                      style={{
+                        padding: "18px 0",
+                        fontSize: 20,
+                        fontWeight: 500,
+                      }}
+                    >
+                      {s}
+                    </button>
+                  ))}
+                </div>
+              </motion.div>
+            )}
+
+            {step === 2 && (
+              <motion.div
+                key="s2"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                transition={{ duration: 0.2 }}
+                className="flex-1 flex flex-col"
+              >
+                <h1 className="t-display mb-2" style={{ fontSize: 28 }}>
+                  What are you <span className="t-italic">into</span>?
+                </h1>
+                <p className="t-body mb-6">
+                  Pick at least two — we'll surface the right sessions for you.
+                </p>
+
+                <div className="flex flex-wrap gap-2">
+                  {INTERESTS.map((it) => (
                     <button
                       key={it.id}
-                      onClick={() =>
-                        setInterests((prev) =>
-                          prev.includes(it.id)
-                            ? prev.filter((x) => x !== it.id)
-                            : [...prev, it.id]
-                        )
-                      }
-                      className={`py-6 rounded-2xl border text-left px-5 transition-all ${
-                        on
-                          ? "bg-white/20 border-white/40 scale-105"
-                          : "bg-white/5 border-white/10 hover:bg-white/10"
-                      }`}
+                      onClick={() => toggle(it.id)}
+                      className="chip"
+                      data-active={interests.includes(it.id)}
                     >
-                      <div className="text-2xl mb-1">{it.emoji}</div>
-                      <p className="font-semibold">{it.label}</p>
+                      {it.label}
                     </button>
-                  );
-                })}
-              </div>
-            </motion.div>
-          )}
+                  ))}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
-          {step === 2 && (
-            <motion.div
-              key="s2"
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -12 }}
-              transition={{ duration: 0.25 }}
-            >
-              <h1 className="text-3xl font-bold leading-tight mb-2 mt-4">
-                You're in. 🎉
-              </h1>
-              <p className="text-white/70 mb-8">
-                Pulse turns your WhatsApp chaos into a single, organised feed.
-              </p>
-              <div className="space-y-3">
-                <Feature emoji="📅" title="This week's sessions" desc="P2Ps, AMAs, workshops — one tap to RSVP." />
-                <Feature emoji="💡" title="Pulse wishlist" desc="Request a session. Upvote what others want." />
-                <Feature emoji="🗺️" title="Discover" desc="Food, cafes, trips — curated by your cohort." />
-                <Feature emoji="🤖" title="WhatsApp, smarter" desc="Link WhatsApp for 1-tap RSVPs from any group." />
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </main>
-
-      <footer className="sticky bottom-0 px-6 py-5 backdrop-blur-xl bg-black/20 border-t border-white/10">
-        <div className="max-w-md mx-auto flex gap-3">
-          {step > 0 && (
-            <button
-              onClick={() => setStep(step - 1)}
-              className="px-5 py-3 rounded-2xl bg-white/10 font-semibold hover:bg-white/20 transition-all"
-            >
-              Back
-            </button>
-          )}
-          {step < 2 ? (
-            <button
-              disabled={!canNext}
-              onClick={() => setStep(step + 1)}
-              className="flex-1 py-3 rounded-2xl font-semibold text-white disabled:opacity-40 transition-all"
-              style={{ background: CTA_GRADIENT }}
-            >
-              Continue
-            </button>
-          ) : (
-            <button
-              onClick={handleFinish}
-              className="flex-1 py-3 rounded-2xl font-semibold text-white transition-all"
-              style={{ background: CTA_GRADIENT }}
-            >
-              Enter Pulse 🚀
-            </button>
-          )}
+          {/* Footer actions */}
+          <div className="flex gap-2 mt-6 pt-5 border-t" style={{ borderColor: COLOR.borderLight }}>
+            {step > 0 && (
+              <button className="btn-ghost" onClick={() => setStep(step - 1)}>
+                Back
+              </button>
+            )}
+            {step < 2 && (
+              <button
+                className="btn-primary flex-1"
+                disabled={!canAdvance[step]}
+                onClick={() => setStep(step + 1)}
+              >
+                Continue
+              </button>
+            )}
+            {step === 2 && (
+              <button
+                className="btn-primary flex-1"
+                disabled={!canAdvance[2]}
+                onClick={finish}
+              >
+                Enter Pulse
+              </button>
+            )}
+          </div>
         </div>
-      </footer>
-    </div>
-  );
-}
 
-function Feature({ emoji, title, desc }: { emoji: string; title: string; desc: string }) {
-  return (
-    <div className="flex gap-3 p-4 rounded-2xl bg-white/5 border border-white/10">
-      <div className="text-2xl flex-shrink-0">{emoji}</div>
-      <div>
-        <p className="font-semibold">{title}</p>
-        <p className="text-sm text-white/60">{desc}</p>
+        <p className="t-meta text-center mt-6">
+          We only ask what we need. No public profile, no feeds.
+        </p>
       </div>
     </div>
   );

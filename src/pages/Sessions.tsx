@@ -1,9 +1,10 @@
 import { useState } from "react";
+import { Plus, Calendar } from "lucide-react";
 import { useSessions } from "../hooks/useSessions";
 import SessionCard from "../components/SessionCard";
 import EmptyState from "../components/EmptyState";
 import type { User, Session } from "../types";
-import { HEADER_GRADIENT, CTA_GRADIENT } from "../lib/pulseTheme";
+import { COLOR } from "../lib/pulseTheme";
 import { tap } from "../lib/haptics";
 
 type Props = {
@@ -18,42 +19,53 @@ export default function Sessions({ user, onOpen, onCreate }: Props) {
 
   const list =
     filter === "mine"
-      ? sessions.filter(
-          (s) => s.my_rsvp === "going" || s.creator_id === user.id
-        )
+      ? sessions.filter((s) => s.my_rsvp === "going" || s.creator_id === user.id)
       : sessions;
 
+  const first = user.name?.split(" ")[0] || "there";
+
   return (
-    <div className="min-h-screen pb-24 bg-[#f8f9ff]">
-      <header className="px-5 pt-12 pb-6 text-white" style={{ background: HEADER_GRADIENT }}>
-        <p className="text-white/60 text-sm mb-0.5">
-          Hey {user.name.split(" ")[0]} 👋
+    <div className="min-h-screen" style={{ background: COLOR.bg }}>
+      {/* Editorial header — no dark navy block */}
+      <header className="px-5 md:px-8 pt-10 pb-6">
+        <p className="t-label mb-2">Hey {first}</p>
+        <h1 className="t-display mb-1" style={{ fontSize: 32 }}>
+          This week on <span className="t-italic">Pulse</span>
+        </h1>
+        <p className="t-body max-w-md">
+          Peer sessions, workshops, and the little moments that don't make it to the official calendar.
         </p>
-        <h1 className="text-2xl font-bold">This week on Pulse</h1>
-        <div className="mt-4 flex gap-2">
+
+        <div className="mt-6 flex gap-2">
           <FilterPill label="All" active={filter === "all"} onClick={() => setFilter("all")} />
-          <FilterPill label="Going" active={filter === "mine"} onClick={() => setFilter("mine")} />
+          <FilterPill label="My sessions" active={filter === "mine"} onClick={() => setFilter("mine")} />
+          <span className="flex-1" />
+          <button
+            onClick={() => { tap(); onCreate(); }}
+            className="btn-primary hidden md:flex items-center gap-2"
+          >
+            <Plus size={16} strokeWidth={2} /> Post a session
+          </button>
         </div>
       </header>
 
-      <main className="px-4 mt-5 space-y-3 max-w-md mx-auto">
+      <main className="px-4 md:px-8 pb-28 space-y-3 max-w-2xl">
         {loading && <SkeletonList />}
 
         {!loading && list.length === 0 && (
           <EmptyState
-            emoji="📅"
-            title={filter === "mine" ? "Nothing yet" : "No sessions this week"}
+            icon={Calendar}
+            title={filter === "mine" ? "Nothing lined up yet" : "A quiet week so far"}
             desc={
               filter === "mine"
-                ? "RSVP to a session and it'll show up here."
-                : "Be the one to start something. Your cohort is waiting 🚀"
+                ? "RSVP to a session, and it'll live here."
+                : "Be the one to start something — your cohort is waiting."
             }
             cta={
               filter === "all" ? (
                 <button
                   onClick={() => { tap(); onCreate(); }}
-                  className="px-6 py-3 rounded-2xl font-semibold text-white text-sm"
-                  style={{ background: CTA_GRADIENT }}
+                  className="btn-primary"
                 >
                   Post a session
                 </button>
@@ -67,14 +79,17 @@ export default function Sessions({ user, onOpen, onCreate }: Props) {
         ))}
       </main>
 
-      {/* FAB */}
+      {/* Mobile FAB */}
       <button
         onClick={() => { tap(); onCreate(); }}
-        className="fixed bottom-24 right-5 w-14 h-14 rounded-full shadow-xl flex items-center justify-center text-2xl text-white z-30"
-        style={{ background: CTA_GRADIENT }}
-        aria-label="Create session"
+        className="md:hidden fixed bottom-24 right-5 w-14 h-14 rounded-full flex items-center justify-center text-white z-30"
+        style={{
+          background: COLOR.navy,
+          boxShadow: "0 8px 24px rgba(28,58,110,.35)",
+        }}
+        aria-label="Post a session"
       >
-        +
+        <Plus size={22} strokeWidth={2.25} />
       </button>
     </div>
   );
@@ -90,12 +105,7 @@ function FilterPill({
   onClick: () => void;
 }) {
   return (
-    <button
-      onClick={onClick}
-      className={`px-4 py-1.5 rounded-full text-sm font-semibold transition-all ${
-        active ? "bg-white text-[#16213e]" : "bg-white/10 text-white hover:bg-white/20"
-      }`}
-    >
+    <button onClick={onClick} className="chip" data-active={active}>
       {label}
     </button>
   );
@@ -105,16 +115,10 @@ function SkeletonList() {
   return (
     <>
       {[0, 1, 2].map((i) => (
-        <div
-          key={i}
-          className="bg-white rounded-3xl border border-gray-100 overflow-hidden animate-pulse"
-        >
-          <div className="h-10 bg-gray-100" />
-          <div className="p-5 space-y-2">
-            <div className="h-4 w-3/4 bg-gray-100 rounded-full" />
-            <div className="h-3 w-1/2 bg-gray-100 rounded-full" />
-            <div className="h-3 w-1/3 bg-gray-100 rounded-full" />
-          </div>
+        <div key={i} className="card p-5 animate-pulse">
+          <div className="h-3 w-24 rounded-full mb-3" style={{ background: COLOR.borderLight }} />
+          <div className="h-5 w-3/4 rounded mb-2" style={{ background: COLOR.borderLight }} />
+          <div className="h-3 w-1/2 rounded-full" style={{ background: COLOR.borderLight }} />
         </div>
       ))}
     </>

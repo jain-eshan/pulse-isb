@@ -1,24 +1,44 @@
 import { useState, useEffect } from "react";
 import type { User } from "../types";
 
-const DEMO_USER: User = {
+const DEMO_KEY = "pulse.demo.user";
+
+// Fresh demo user — empty section + interests so onboarding runs.
+// After onboarding completes, updateUser() persists the filled profile.
+const FRESH_DEMO_USER: User = {
   id: "demo-user-1",
   microsoft_id: "demo-ms-id",
   name: "Eshan Jain",
   email: "eshan.jain@isb.edu",
-  section: "B",
+  section: "",
   campus: "mohali",
   cohort_year: 2026,
-  vibe_tags: ["Explorer", "Foodie", "Night Owl"],
-  interests: ["product", "tech"],
+  vibe_tags: [],
+  interests: [],
   budget_min: 500,
   budget_max: 4000,
   location_sharing: false,
   created_at: new Date().toISOString(),
 };
 
-const IS_DEMO = !import.meta.env.VITE_AZURE_CLIENT_ID ||
+const IS_DEMO =
+  !import.meta.env.VITE_AZURE_CLIENT_ID ||
   import.meta.env.VITE_AZURE_CLIENT_ID === "your-client-id";
+
+function loadDemo(): User | null {
+  try {
+    const raw = localStorage.getItem(DEMO_KEY);
+    return raw ? (JSON.parse(raw) as User) : null;
+  } catch {
+    return null;
+  }
+}
+function saveDemo(u: User | null) {
+  try {
+    if (u) localStorage.setItem(DEMO_KEY, JSON.stringify(u));
+    else localStorage.removeItem(DEMO_KEY);
+  } catch { /* empty */ }
+}
 
 export function useAuth() {
   const [user, setUser] = useState<User | null>(null);
@@ -27,22 +47,27 @@ export function useAuth() {
 
   useEffect(() => {
     if (IS_DEMO) {
-      // Auto-login in demo mode (no real credentials configured yet)
-      setUser(DEMO_USER);
+      // ?reset=1 in URL clears the demo profile to re-run onboarding
+      const urlReset = new URLSearchParams(window.location.search).has("reset");
+      if (urlReset) saveDemo(null);
+      const stored = loadDemo();
+      setUser(stored); // null → login screen; present → through to app
       setLoading(false);
       return;
     }
 
-    // Real Microsoft auth flow
     import("../lib/msal").then(({ msalInstance }) => {
-      msalInstance.initialize().then(async () => {
-        const accounts = msalInstance.getAllAccounts();
-        if (accounts.length > 0) {
-          await loadUser(accounts[0].homeAccountId);
-        } else {
-          setLoading(false);
-        }
-      }).catch(() => setLoading(false));
+      msalInstance
+        .initialize()
+        .then(async () => {
+          const accounts = msalInstance.getAllAccounts();
+          if (accounts.length > 0) {
+            await loadUser(accounts[0].homeAccountId);
+          } else {
+            setLoading(false);
+          }
+        })
+        .catch(() => setLoading(false));
     });
   }, []);
 
@@ -60,8 +85,10 @@ export function useAuth() {
   async function signIn() {
     setError(null);
     if (IS_DEMO) {
-      setUser(DEMO_USER);
-      return DEMO_USER;
+      const fresh = { ...FRESH_DEMO_USER };
+      saveDemo(fresh);
+      setUser(fresh);
+      return fresh;
     }
 
     try {
@@ -100,7 +127,11 @@ export function useAuth() {
         location_sharing: false,
       };
 
-      const { data: created } = await supabase.from("users").insert(newUser).select().single();
+      const { data: created } = await supabase
+        .from("users")
+        .insert(newUser)
+        .select()
+        .single();
       setUser(created);
       return created;
     } catch {
@@ -111,6 +142,7 @@ export function useAuth() {
 
   async function signOut() {
     if (IS_DEMO) {
+      saveDemo(null);
       setUser(null);
       return;
     }
@@ -123,7 +155,9 @@ export function useAuth() {
   async function updateUser(updates: Partial<User>) {
     if (!user) return;
     if (IS_DEMO) {
-      setUser({ ...user, ...updates });
+      const next = { ...user, ...updates };
+      saveDemo(next);
+      setUser(next);
       return;
     }
     const { supabase } = await import("../lib/supabase");
@@ -136,5 +170,5 @@ export function useAuth() {
     setUser(data);
   }
 
-  return { user, loading, error, signIn, signOut, updateUser };
+  return { user, loading, error, signIn, signOut, updateUser, isDemo: IS_DEMO };
 }

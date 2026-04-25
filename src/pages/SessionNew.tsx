@@ -1,8 +1,9 @@
 import { useState } from "react";
+import { ArrowLeft, Sparkles } from "lucide-react";
 import { useSessions } from "../hooks/useSessions";
 import type { User, Interest } from "../types";
 import { INTERESTS } from "../types";
-import { HEADER_GRADIENT, CTA_GRADIENT } from "../lib/pulseTheme";
+import { COLOR } from "../lib/pulseTheme";
 import { tap } from "../lib/haptics";
 
 type Props = { user: User; onDone: () => void };
@@ -43,11 +44,7 @@ export default function SessionNew({ user, onDone }: Props) {
       if (parsed.starts_at) setStartsAt(toLocalDatetime(parsed.starts_at));
       if (parsed.venue) setVenue(parsed.venue);
       if (parsed.tags?.length)
-        setTags(
-          parsed.tags.filter((t: string) =>
-            INTERESTS.some((i) => i.id === t)
-          ) as Interest[]
-        );
+        setTags(parsed.tags.filter((t: string) => INTERESTS.some((i) => i.id === t)) as Interest[]);
       setMode("form");
     } catch {
       setErr("Couldn't parse — fill it in manually.");
@@ -79,41 +76,51 @@ export default function SessionNew({ user, onDone }: Props) {
   }
 
   return (
-    <div className="min-h-screen bg-[#f8f9ff] pb-24">
-      <header className="px-5 pt-12 pb-6 text-white" style={{ background: HEADER_GRADIENT }}>
+    <div className="min-h-screen pb-16" style={{ background: COLOR.bg }}>
+      <header className="px-5 md:px-8 pt-6 max-w-2xl">
         <button
           onClick={() => { tap(); onDone(); }}
-          className="text-white/70 text-sm mb-4"
+          className="flex items-center gap-1.5 t-meta"
+          style={{ color: COLOR.ink2 }}
         >
-          ← Back
+          <ArrowLeft size={14} /> Back
         </button>
-        <h1 className="text-2xl font-bold">New session</h1>
+        <h1 className="t-display mt-5" style={{ fontSize: 32 }}>
+          New <span className="t-italic">session</span>
+        </h1>
+        <p className="t-body mt-1">Paste a WhatsApp announcement, or fill it in.</p>
       </header>
 
-      <main className="max-w-md mx-auto px-4 mt-5 space-y-3">
+      <main className="px-4 md:px-8 max-w-2xl mt-6 space-y-3">
         {mode === "paste" && (
-          <div className="bg-white rounded-3xl border border-gray-100 p-5 space-y-3">
-            <p className="text-sm text-gray-600 leading-relaxed">
-              Paste your WhatsApp announcement — Claude will auto-fill the details.
-            </p>
+          <div className="card p-6 space-y-4">
+            <label className="t-label block">Paste announcement</label>
             <textarea
               value={paste}
               onChange={(e) => setPaste(e.target.value)}
-              rows={6}
-              placeholder="e.g. 🟢 Consulting P2P Session — today at 9PM in LT3. Speakers from Bain and Deloitte..."
-              className="w-full p-4 rounded-2xl bg-[#f0f4ff] text-gray-900 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-[#4f6ef7]/30"
+              rows={7}
+              placeholder="e.g. Consulting P2P — tonight at 9PM, LT3. Speakers from Bain & Deloitte. All PGP welcome."
+              className="w-full p-4 rounded-[10px] text-sm resize-none focus:outline-none focus:ring-2"
+              style={{
+                border: `1px solid ${COLOR.border}`,
+                background: COLOR.bg,
+                color: COLOR.ink,
+                fontFamily: "'Plus Jakarta Sans', sans-serif",
+                lineHeight: 1.6,
+              }}
             />
             <button
               onClick={handleParse}
               disabled={busy || !paste.trim()}
-              className="w-full py-3 rounded-2xl font-semibold text-white disabled:opacity-40 transition-all"
-              style={{ background: CTA_GRADIENT }}
+              className="btn-primary w-full flex items-center justify-center gap-2"
             >
-              {busy ? "Parsing…" : "✨ Parse with Claude"}
+              <Sparkles size={15} />
+              {busy ? "Reading…" : "Parse with Claude"}
             </button>
             <button
               onClick={() => setMode("form")}
-              className="w-full py-2 text-sm text-gray-500 hover:text-gray-700"
+              className="w-full text-sm t-meta hover:opacity-70"
+              style={{ color: COLOR.ink2 }}
             >
               Fill in manually →
             </button>
@@ -121,43 +128,41 @@ export default function SessionNew({ user, onDone }: Props) {
         )}
 
         {mode === "form" && (
-          <div className="bg-white rounded-3xl border border-gray-100 p-5 space-y-4">
+          <div className="card p-6 space-y-5">
             {err && (
-              <div className="bg-red-50 border border-red-100 rounded-2xl px-4 py-3 text-sm text-red-700">
+              <div
+                className="rounded-[10px] px-4 py-3 text-sm"
+                style={{
+                  background: "#FEF2F2",
+                  border: "1px solid #FECACA",
+                  color: "#B91C1C",
+                }}
+              >
                 {err}
               </div>
             )}
-            <Field label="Title *">
-              <input
-                className="w-full p-3 rounded-xl bg-gray-50 text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-[#4f6ef7]/30"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder="e.g. FADM P2P — Chapter 3"
-              />
+            <Field label="Title">
+              <Input value={title} onChange={setTitle} placeholder="e.g. FADM P2P — Chapter 3" />
             </Field>
-            <Field label="When *">
-              <input
-                type="datetime-local"
-                className="w-full p-3 rounded-xl bg-gray-50 text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-[#4f6ef7]/30"
-                value={startsAt}
-                onChange={(e) => setStartsAt(e.target.value)}
-              />
+            <Field label="When">
+              <Input value={startsAt} onChange={setStartsAt} type="datetime-local" />
             </Field>
             <Field label="Venue">
-              <input
-                className="w-full p-3 rounded-xl bg-gray-50 text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-[#4f6ef7]/30"
-                value={venue}
-                onChange={(e) => setVenue(e.target.value)}
-                placeholder="e.g. LT3, Atrium, Online"
-              />
+              <Input value={venue} onChange={setVenue} placeholder="LT3, Atrium, Zoom…" />
             </Field>
             <Field label="Description">
               <textarea
                 rows={3}
-                className="w-full p-3 rounded-xl bg-gray-50 text-gray-900 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-[#4f6ef7]/30"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
+                className="w-full px-4 py-3 rounded-[10px] text-sm resize-none focus:outline-none focus:ring-2"
                 placeholder="What's this about? Who's it for?"
+                style={{
+                  border: `1px solid ${COLOR.border}`,
+                  background: COLOR.surface,
+                  color: COLOR.ink,
+                  fontFamily: "'Plus Jakarta Sans', sans-serif",
+                }}
               />
             </Field>
             <Field label="Tags">
@@ -168,36 +173,33 @@ export default function SessionNew({ user, onDone }: Props) {
                     <button
                       key={it.id}
                       onClick={() =>
-                        setTags((p) =>
-                          on ? p.filter((x) => x !== it.id) : [...p, it.id]
-                        )
+                        setTags((p) => (on ? p.filter((x) => x !== it.id) : [...p, it.id]))
                       }
-                      className={`px-3 py-1.5 rounded-full text-sm font-medium border transition-all ${
-                        on
-                          ? "bg-[#f0f4ff] border-[#4f6ef7] text-[#2d43cc]"
-                          : "bg-gray-50 border-gray-200 text-gray-600 hover:border-gray-300"
-                      }`}
+                      className="chip"
+                      data-active={on}
                     >
-                      {it.emoji} {it.label}
+                      {it.label}
                     </button>
                   );
                 })}
               </div>
             </Field>
-            <button
-              onClick={handleSubmit}
-              disabled={busy}
-              className="w-full py-3 rounded-2xl font-semibold text-white disabled:opacity-50 transition-all"
-              style={{ background: CTA_GRADIENT }}
-            >
-              {busy ? "Posting…" : "Post session"}
-            </button>
-            <button
-              onClick={() => setMode("paste")}
-              className="w-full py-2 text-sm text-gray-500 hover:text-gray-700"
-            >
-              ← Try paste-to-parse
-            </button>
+
+            <div className="flex gap-2 pt-2">
+              <button
+                onClick={() => setMode("paste")}
+                className="btn-ghost"
+              >
+                ← Paste instead
+              </button>
+              <button
+                onClick={handleSubmit}
+                disabled={busy}
+                className="btn-primary flex-1"
+              >
+                {busy ? "Posting…" : "Post session"}
+              </button>
+            </div>
           </div>
         )}
       </main>
@@ -208,9 +210,37 @@ export default function SessionNew({ user, onDone }: Props) {
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
-      <p className="text-xs uppercase tracking-wider text-gray-400 font-medium mb-1.5">{label}</p>
+      <label className="t-label block mb-2">{label}</label>
       {children}
     </div>
+  );
+}
+
+function Input({
+  value,
+  onChange,
+  placeholder,
+  type = "text",
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+  type?: string;
+}) {
+  return (
+    <input
+      type={type}
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      placeholder={placeholder}
+      className="w-full px-4 py-3 rounded-[10px] text-sm focus:outline-none focus:ring-2"
+      style={{
+        border: `1px solid ${COLOR.border}`,
+        background: COLOR.surface,
+        color: COLOR.ink,
+        fontFamily: "'Plus Jakarta Sans', sans-serif",
+      }}
+    />
   );
 }
 

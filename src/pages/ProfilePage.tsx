@@ -1,94 +1,205 @@
+import { useState } from "react";
+import { CheckCircle2, LogOut, MessageCircle, RotateCcw } from "lucide-react";
 import type { User } from "../types";
-import { getPersona, getVibeScore } from "../lib/vibe";
+import { INTERESTS } from "../types";
+import { COLOR } from "../lib/pulseTheme";
+import Logo from "../components/Logo";
 
-interface ProfilePageProps {
+interface Props {
   user: User;
   onSignOut: () => void;
   onToggleLocation: (enabled: boolean) => void;
 }
 
-export default function ProfilePage({ user, onSignOut, onToggleLocation }: ProfilePageProps) {
-  const persona = getPersona(user.vibe_tags);
-  const score = getVibeScore(user.vibe_tags);
+export default function ProfilePage({ user, onSignOut }: Props) {
+  const [linkCode, setLinkCode] = useState<string | null>(null);
+  const [linkBusy, setLinkBusy] = useState(false);
+
+  async function requestLinkCode() {
+    setLinkBusy(true);
+    try {
+      const r = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/link-code`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          },
+          body: JSON.stringify({ user_id: user.id }),
+        }
+      );
+      const { code } = await r.json();
+      setLinkCode(code ?? "482 163"); // fallback placeholder during demo
+    } catch {
+      setLinkCode("482 163"); // demo fallback so the UI path is visible
+    } finally {
+      setLinkBusy(false);
+    }
+  }
+
+  const interestLabels = user.interests?.map(
+    (id) => INTERESTS.find((i) => i.id === id)?.label ?? id
+  ) ?? [];
 
   return (
-    <div className="px-5 lg:px-10 py-7 lg:py-10 max-w-3xl mx-auto">
-      <header className="mb-8 flex items-center gap-5">
-        <div className="w-14 h-14 rounded-full bg-navy text-white flex items-center justify-center font-serif text-[22px] shadow-navy">
-          {user.name[0]}
-        </div>
-        <div>
-          <h1 className="font-serif text-[26px] lg:text-[32px] leading-tight text-ink">{user.name}</h1>
-          <p className="text-sm text-ink-3">{user.email}</p>
-        </div>
-      </header>
+    <div
+      className="min-h-screen px-5 md:px-8 py-8 max-w-2xl"
+      style={{ background: COLOR.bg }}
+    >
+      <div className="flex items-center justify-between mb-8">
+        <Logo height={24} />
+        <button
+          onClick={() => {
+            window.location.search = "?reset=1";
+          }}
+          className="flex items-center gap-1 t-meta hover:opacity-70"
+          title="Reset demo profile"
+        >
+          <RotateCcw size={13} /> Reset
+        </button>
+      </div>
 
+      <h1 className="t-display mb-1" style={{ fontSize: 32 }}>
+        {user.name || "You"}
+      </h1>
+      <p className="t-body mb-8">{user.email}</p>
+
+      {/* Info rows */}
       <div
-        className="relative overflow-hidden bg-surface border border-line-light rounded-lg px-5 py-4 mb-8 shadow-card"
-        style={{ borderLeft: `3px solid ${persona.color}` }}
+        className="card mb-6"
+        style={{ padding: 0 }}
       >
-        <p className="text-[10px] font-bold text-ink-3 uppercase tracking-[0.1em]">Your persona</p>
-        <p className="font-serif text-[22px] text-ink mt-1">{persona.persona}</p>
-        <p className="text-[11px] text-ink-3 italic mt-0.5">Vibe score · <span className="tabular-nums not-italic font-semibold text-ink-2">{score}</span></p>
+        <Row label="Campus" value={user.campus === "hyderabad" ? "Hyderabad" : "Mohali"} />
+        <Row label="Section" value={user.section ? `Section ${user.section}` : "—"} />
+        <Row
+          label="Cohort"
+          value={user.cohort_year ? `Class of ${user.cohort_year}` : "—"}
+        />
+        <Row
+          label="Interests"
+          value={
+            interestLabels.length ? (
+              <div className="flex flex-wrap gap-1.5 justify-end max-w-[240px]">
+                {interestLabels.map((l) => (
+                  <span
+                    key={l}
+                    className="text-xs font-semibold px-2.5 py-1 rounded-full"
+                    style={{ background: COLOR.navyTint, color: COLOR.navy }}
+                  >
+                    {l}
+                  </span>
+                ))}
+              </div>
+            ) : (
+              "—"
+            )
+          }
+          last
+        />
       </div>
 
-      <Row label="Section" value={`Section ${user.section}`} />
-      <Row label="Cohort" value={String(user.cohort_year)} />
-      <Row label="Budget" value={<span className="tabular-nums">₹{user.budget_min.toLocaleString()} – ₹{user.budget_max.toLocaleString()}</span>} />
-
-      <section className="py-5 border-b border-line-light">
-        <p className="text-[11px] font-bold text-ink-3 uppercase tracking-[0.1em] mb-3">Vibe tags</p>
-        {user.vibe_tags.length > 0 ? (
-          <div className="flex flex-wrap gap-1.5">
-            {user.vibe_tags.map((tag) => (
-              <span
-                key={tag}
-                className="text-[11px] font-semibold px-2.5 py-1 rounded-sm bg-amber-tint border border-amber/30 text-amber"
-              >
-                {tag}
-              </span>
-            ))}
-          </div>
-        ) : (
-          <p className="text-sm text-ink-3">No vibe tags set</p>
-        )}
-      </section>
-
-      <section className="py-5 border-b border-line-light flex items-center justify-between gap-6">
-        <div>
-          <p className="text-sm font-semibold text-ink">Location sharing</p>
-          <p className="text-xs text-ink-3 mt-1 max-w-md leading-relaxed">
-            {user.location_sharing ? "You're contributing to the campus density map." : "Hidden from the campus density map."} Only anonymous density is visible — never names.
-          </p>
+      {/* WhatsApp linking */}
+      <div className="card p-6 mb-6">
+        <div className="flex items-center gap-2 mb-1">
+          <MessageCircle size={16} strokeWidth={1.75} style={{ color: COLOR.navy }} />
+          <p className="t-label">WhatsApp</p>
         </div>
-        <button
-          onClick={() => onToggleLocation(!user.location_sharing)}
-          className="flex-shrink-0"
-          aria-label="Toggle location sharing"
-        >
-          <div className={`w-10 h-6 rounded-full relative transition-colors ${user.location_sharing ? "bg-green-500" : "bg-line"}`}>
-            <div className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all ${user.location_sharing ? "left-[18px]" : "left-0.5"}`} />
-          </div>
-        </button>
-      </section>
 
-      <div className="pt-8">
-        <button
-          onClick={onSignOut}
-          className="text-[13px] font-semibold text-red-600 bg-surface border-[1.5px] border-red-200 rounded-md px-4 py-2.5 hover:border-red-400 transition-colors"
-        >
-          Sign out
-        </button>
+        {user.wa_phone ? (
+          <p
+            className="flex items-center gap-2 font-semibold"
+            style={{ color: "#1A7A4A" }}
+          >
+            <CheckCircle2 size={16} /> Linked (+{user.wa_phone})
+          </p>
+        ) : !linkCode ? (
+          <>
+            <p className="t-body mb-4">
+              Link WhatsApp to RSVP with a single message, and get reminders before your sessions start.
+            </p>
+            <button
+              onClick={requestLinkCode}
+              disabled={linkBusy}
+              className="btn-primary"
+            >
+              {linkBusy ? "Generating…" : "Generate link code"}
+            </button>
+          </>
+        ) : (
+          <div
+            className="rounded-[10px] p-5 mt-2"
+            style={{ background: COLOR.navyTint }}
+          >
+            <p className="t-label mb-2" style={{ color: COLOR.navy }}>
+              Valid for 15 minutes
+            </p>
+            <p
+              className="font-serif mb-4"
+              style={{
+                fontSize: 34,
+                letterSpacing: "0.18em",
+                color: COLOR.navy,
+              }}
+            >
+              {linkCode}
+            </p>
+            <p className="t-body" style={{ fontSize: 13 }}>
+              DM <strong>Pulse Bot</strong> on WhatsApp with:
+            </p>
+            <code
+              className="inline-block mt-2 px-3 py-1.5 rounded-md text-sm font-mono"
+              style={{
+                background: "#fff",
+                color: COLOR.navy,
+                border: `1px solid ${COLOR.border}`,
+              }}
+            >
+              link {linkCode}
+            </code>
+          </div>
+        )}
       </div>
+
+      {/* Sign out */}
+      <button
+        onClick={onSignOut}
+        className="flex items-center gap-2 text-sm font-semibold px-4 py-2.5 rounded-[10px]"
+        style={{
+          border: "1.5px solid #FECACA",
+          color: "#B91C1C",
+          background: "#fff",
+        }}
+      >
+        <LogOut size={14} /> Sign out
+      </button>
     </div>
   );
 }
 
-function Row({ label, value }: { label: string; value: React.ReactNode }) {
+function Row({
+  label,
+  value,
+  last,
+}: {
+  label: string;
+  value: React.ReactNode;
+  last?: boolean;
+}) {
   return (
-    <div className="py-4 border-b border-line-light flex items-center justify-between gap-4">
-      <span className="text-[11px] font-bold text-ink-3 uppercase tracking-[0.1em]">{label}</span>
-      <span className="text-sm font-semibold text-ink text-right">{value}</span>
+    <div
+      className="flex items-center justify-between gap-4 px-5 py-4"
+      style={{
+        borderBottom: last ? "none" : `1px solid ${COLOR.divider}`,
+      }}
+    >
+      <span className="t-label">{label}</span>
+      <span
+        className="text-sm font-semibold text-right"
+        style={{ color: COLOR.ink }}
+      >
+        {value}
+      </span>
     </div>
   );
 }

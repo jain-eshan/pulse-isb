@@ -1,92 +1,124 @@
-import { useState } from "react";
-import type { User, Place, PlaceCategory } from "../types";
-import { SEED_PLACES } from "../lib/places";
-import PlaceCard from "../components/PlaceCard";
-import { Search } from "lucide-react";
+import { MapPin, Utensils, Coffee, Mountain } from "lucide-react";
+import type { User } from "../types";
+import { COLOR, stripGradient } from "../lib/pulseTheme";
 
-const CATEGORIES: { key: PlaceCategory | "all"; label: string }[] = [
-  { key: "all", label: "All" },
-  { key: "food", label: "Food" },
-  { key: "cafe", label: "Cafes" },
-  { key: "nightlife", label: "Nightlife" },
-  { key: "travel", label: "Trips" },
+type Props = { user: User; onGoingClick: () => void };
+
+// Curated placeholder — real places will hydrate from Supabase in Day 5.
+const SAMPLE = [
+  {
+    id: "1",
+    name: "Pal Dhaba",
+    category: "Food",
+    strip: "#D4621A",
+    tint: "#FFF2EA",
+    icon: Utensils,
+    meta: "12 min from campus · open till 3AM",
+    desc: "Legendary late-night dhaba near Sector 70. The butter chicken is non-negotiable.",
+    budget: "₹150 – 300",
+    tag: "Budget",
+    tagBg: "#E8F8EF",
+    tagColor: "#1A7A4A",
+  },
+  {
+    id: "2",
+    name: "Nik Baker's · Elante",
+    category: "Cafe",
+    strip: "#8B5E24",
+    tint: "#F7EFE4",
+    icon: Coffee,
+    meta: "20 min · good wifi · quiet corners",
+    desc: "Where half your section ends up after lectures. Croissants are the move.",
+    budget: "₹350 – 600",
+    tag: "Mid",
+    tagBg: "#FDF4E0",
+    tagColor: "#8B5E00",
+  },
+  {
+    id: "3",
+    name: "Kasauli · weekend trip",
+    category: "Travel",
+    strip: "#1A7A4A",
+    tint: "#E8F8EF",
+    icon: Mountain,
+    meta: "2.5 hr drive · day-trip worthy",
+    desc: "The closest you'll get to a proper mountain reset without skipping a class.",
+    budget: "₹1,200 – 3,000",
+    tag: "Mid",
+    tagBg: "#FDF4E0",
+    tagColor: "#8B5E00",
+  },
 ];
 
-interface HomeProps {
-  user: User;
-  onGoingClick: (place: Place) => void;
-}
-
-export default function Home({ user, onGoingClick }: HomeProps) {
-  const [category, setCategory] = useState<PlaceCategory | "all">("all");
-  const [search, setSearch] = useState("");
-
-  const filtered = SEED_PLACES.filter((p) => {
-    const matchCategory = category === "all" || p.category === category;
-    const matchSearch = !search || p.name.toLowerCase().includes(search.toLowerCase()) || p.city.includes(search.toLowerCase());
-    const budgetPer = p.budget_level === "low" ? 300 : p.budget_level === "mid" ? 2000 : 5000;
-    const matchBudget = budgetPer <= user.budget_max;
-    return matchCategory && matchSearch && matchBudget;
-  });
+export default function Home({ user }: Props) {
+  const first = user.name?.split(" ")[0] || "there";
 
   return (
-    <div className="px-5 lg:px-10 py-7 lg:py-10 max-w-6xl mx-auto">
-      <header className="mb-7">
-        <p className="text-[11px] font-bold text-ink-3 uppercase tracking-[0.1em] mb-2">
-          Section {user.section} · Cohort {user.cohort_year}
-        </p>
-        <h1 className="font-serif text-[32px] lg:text-[40px] leading-[1.05] text-ink">Discover.</h1>
-        <p className="font-serif italic text-navy text-[17px] lg:text-[20px] mt-1">Find the moment.</p>
-        <p className="text-ink-2 text-sm mt-3 leading-relaxed">
-          Curated spots around ISB Mohali, matched to your vibe and budget.
+    <div className="min-h-screen pb-28" style={{ background: COLOR.bg }}>
+      <header className="px-5 md:px-8 pt-10 pb-6 max-w-2xl">
+        <p className="t-label mb-2">Hey {first}</p>
+        <h1 className="t-display mb-1" style={{ fontSize: 32 }}>
+          Find <span className="t-italic">your spots.</span>
+        </h1>
+        <p className="t-body max-w-md">
+          Places your cohort actually goes — filtered for distance, vibe, and budget.
         </p>
       </header>
 
-      <div className="mb-5">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-ink-3" />
-          <input
-            type="text"
-            placeholder="Search places or cities"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full bg-surface border border-line rounded-md pl-9 pr-4 py-2.5 text-sm text-ink placeholder-ink-3 focus:outline-none focus:border-navy focus:ring-4 focus:ring-navy/10 transition-all"
-          />
-        </div>
-      </div>
+      <main className="px-4 md:px-8 max-w-2xl space-y-3">
+        {SAMPLE.map((p) => {
+          const Icon = p.icon;
+          return (
+            <article key={p.id} className="card card-hover">
+              <div
+                style={{ height: 2, background: stripGradient(p.strip, p.tint) }}
+              />
+              <div className="px-5 pt-4 pb-5">
+                <p className="t-label mb-2" style={{ color: p.strip }}>
+                  {p.category} · Mohali
+                </p>
+                <h3 className="t-card-title mb-2 flex items-center gap-2">
+                  <Icon size={16} strokeWidth={1.75} style={{ color: p.strip }} />
+                  {p.name}
+                </h3>
+                <p className="t-body" style={{ fontSize: 13, marginBottom: 10 }}>
+                  {p.desc}
+                </p>
+                <div className="flex items-center gap-3 t-meta mb-3">
+                  <MapPin size={13} strokeWidth={1.75} />
+                  {p.meta}
+                </div>
+                <div
+                  className="flex items-center justify-between pt-3"
+                  style={{ borderTop: `1px solid ${COLOR.divider}` }}
+                >
+                  <div>
+                    <p className="t-label" style={{ marginBottom: 2 }}>
+                      Per person
+                    </p>
+                    <p
+                      className="font-serif"
+                      style={{ fontSize: 16, color: COLOR.ink }}
+                    >
+                      {p.budget}
+                    </p>
+                  </div>
+                  <span
+                    className="text-xs font-semibold px-3 py-1 rounded-md"
+                    style={{ background: p.tagBg, color: p.tagColor }}
+                  >
+                    {p.tag}
+                  </span>
+                </div>
+              </div>
+            </article>
+          );
+        })}
 
-      <div className="flex flex-wrap items-center gap-2 mb-7">
-        {CATEGORIES.map(({ key, label }) => (
-          <button
-            key={key}
-            onClick={() => setCategory(key)}
-            className={`text-[13px] px-4 py-[7px] rounded-full font-semibold transition-colors border ${
-              category === key
-                ? "bg-navy text-white border-navy shadow-navy"
-                : "bg-surface text-ink-2 border-line hover:border-navy hover:text-navy"
-            }`}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
-
-      {filtered.length === 0 ? (
-        <div className="text-center py-20 border border-dashed border-line rounded-lg bg-surface">
-          <p className="font-serif text-[22px] text-ink">No spots match your filters.</p>
-          <p className="text-ink-3 text-sm mt-2">Try a different category or widen your budget.</p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filtered.map((place) => (
-            <PlaceCard
-              key={place.id}
-              place={place}
-              onGoingClick={() => onGoingClick(place)}
-            />
-          ))}
-        </div>
-      )}
+        <p className="t-meta text-center pt-4 italic">
+          More spots rolling in — seeded with the top 30 after launch.
+        </p>
+      </main>
     </div>
   );
 }
