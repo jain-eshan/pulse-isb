@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Calendar, Compass, Lightbulb, User as UserIcon } from "lucide-react";
 import { useAuth } from "./hooks/useAuth";
+import { supabase } from "./lib/supabase";
 import Login from "./pages/Login";
 import Onboarding from "./pages/Onboarding";
 import Sessions from "./pages/Sessions";
@@ -28,6 +29,24 @@ export default function App() {
   const [openSession, setOpenSession] = useState<Session | null>(null);
   const [creating, setCreating] = useState(false);
   const [prefillVenue, setPrefillVenue] = useState<string | undefined>();
+
+  // Deep-link: ?session=<id> opens that session detail
+  useEffect(() => {
+    if (!user) return;
+    const params = new URLSearchParams(window.location.search);
+    const sid = params.get("session");
+    if (!sid) return;
+    (async () => {
+      const { data } = await supabase
+        .from("sessions")
+        .select("*, creator:users!sessions_creator_id_fkey(id,name,avatar_url,section), rsvps(user_id,status)")
+        .eq("id", sid)
+        .maybeSingle();
+      if (data) setOpenSession(data as unknown as Session);
+      // Clean URL so refresh doesn't loop
+      window.history.replaceState({}, "", window.location.pathname);
+    })();
+  }, [user]);
 
   if (loading) {
     return (
