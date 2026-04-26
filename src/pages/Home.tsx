@@ -4,8 +4,9 @@ import type { User } from "../types";
 import { COLOR, stripGradient } from "../lib/pulseTheme";
 import { supabase } from "../lib/supabase";
 import { tap } from "../lib/haptics";
+import { usePlaces, type DBPlace } from "../hooks/usePlaces";
 
-type Props = { user: User; onGoingClick: () => void };
+type Props = { user: User; onGoingClick: () => void; onHostHere?: (venue: string) => void };
 
 const CURATED = [
   {
@@ -32,13 +33,25 @@ type SuggestForm = { name: string; category: string; area: string; desc: string;
 const EMPTY_FORM: SuggestForm = { name: "", category: "", area: "", desc: "", budget: "" };
 const CATEGORIES = ["Food", "Cafe", "Nightlife", "Travel"];
 
-export default function Home({ user }: Props) {
+export default function Home({ user, onHostHere }: Props) {
   const first = user.name?.split(" ")[0] || "there";
+  const { places } = usePlaces();
   const [showModal, setShowModal] = useState(false);
   const [form, setForm] = useState<SuggestForm>(EMPTY_FORM);
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+
+  function handleHostHere(p: DBPlace) {
+    tap();
+    const venue = p.area ? `${p.name}, ${p.area}` : p.name;
+    onHostHere?.(venue);
+  }
+
+  function mapsUrl(p: DBPlace): string {
+    if (p.google_maps_url) return p.google_maps_url;
+    return `https://maps.google.com/?q=${encodeURIComponent(p.name + " " + (p.area ?? ""))}`;
+  }
 
   function set(key: keyof SuggestForm, value: string) {
     setForm((f) => ({ ...f, [key]: value }));
@@ -82,8 +95,40 @@ export default function Home({ user }: Props) {
       </header>
 
       <main className="px-4 md:px-8 max-w-2xl space-y-3">
-        {/* Curated editorial cards */}
-        {CURATED.map((p) => {
+        {/* Real places from DB first */}
+        {places.map((p) => (
+          <article key={p.id} className="card card-hover">
+            <div className="px-5 pt-4 pb-5">
+              <p className="t-label mb-2" style={{ color: COLOR.navy }}>
+                {p.category[0].toUpperCase() + p.category.slice(1)}{p.area ? ` · ${p.area}` : ""}
+              </p>
+              <h3 className="t-card-title mb-2">{p.name}</h3>
+              {p.description && (
+                <p className="t-body" style={{ fontSize: 13, marginBottom: 10 }}>{p.description}</p>
+              )}
+              <div className="flex gap-2 mt-3">
+                <a
+                  href={mapsUrl(p)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={() => tap()}
+                  className="btn-ghost flex items-center gap-1.5"
+                >
+                  <MapPin size={13} /> Open in Maps
+                </a>
+                <button
+                  onClick={() => handleHostHere(p)}
+                  className="btn-ghost flex items-center gap-1.5"
+                >
+                  <Plus size={13} /> Host event here
+                </button>
+              </div>
+            </div>
+          </article>
+        ))}
+
+        {/* Curated fallback when DB is empty */}
+        {places.length === 0 && CURATED.map((p) => {
           const Icon = p.icon;
           return (
             <article key={p.id} className="card card-hover">

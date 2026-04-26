@@ -3,6 +3,7 @@ import { format, isToday, isTomorrow } from "date-fns";
 import { MapPin, Users } from "lucide-react";
 import type { Session } from "../types";
 import { COLOR, INTEREST_COLOR, stripGradient } from "../lib/pulseTheme";
+import SectionPill from "./SectionPill";
 
 type Props = { session: Session; onClick: () => void };
 
@@ -52,7 +53,17 @@ export default function SessionCard({ session, onClick }: Props) {
         </div>
 
         {/* Title */}
-        <h3 className="t-card-title mb-2">{session.title}</h3>
+        <h3 className="t-card-title mb-1">{session.title}</h3>
+
+        {/* Host + section pill */}
+        {session.creator && (
+          <div className="flex items-center gap-2 mb-2">
+            <span className="t-meta" style={{ color: COLOR.ink2 }}>
+              by {session.creator.name?.split(" ")[0] ?? "—"}
+            </span>
+            <SectionPill code={session.creator.section} size="sm" />
+          </div>
+        )}
 
         {/* Short description */}
         {session.description && (

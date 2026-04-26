@@ -3,6 +3,7 @@ import { CheckCircle2, LogOut, MessageCircle, RotateCcw } from "lucide-react";
 import type { User } from "../types";
 import { INTERESTS } from "../types";
 import { COLOR } from "../lib/pulseTheme";
+import { sectionByCode } from "../lib/sections";
 import Logo from "../components/Logo";
 
 interface Props {
@@ -71,7 +72,14 @@ export default function ProfilePage({ user, onSignOut }: Props) {
         style={{ padding: 0 }}
       >
         <Row label="Campus" value={user.campus === "hyderabad" ? "Hyderabad" : "Mohali"} />
-        <Row label="Section" value={user.section ? `Section ${user.section}` : "—"} />
+        <Row
+          label="Section"
+          value={
+            user.section
+              ? `${sectionByCode(user.section)?.name ?? "Section " + user.section}${user.ogsg ? " · OGSG " + user.ogsg : ""}`
+              : "—"
+          }
+        />
         <Row
           label="Cohort"
           value={user.cohort_year ? `Class of ${user.cohort_year}` : "—"}
@@ -111,7 +119,7 @@ export default function ProfilePage({ user, onSignOut }: Props) {
             className="flex items-center gap-2 font-semibold"
             style={{ color: "#1A7A4A" }}
           >
-            <CheckCircle2 size={16} /> Linked (+{user.wa_phone})
+            <CheckCircle2 size={16} /> Linked ✓
           </p>
         ) : !linkCode ? (
           <>

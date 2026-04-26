@@ -27,6 +27,7 @@ export default function App() {
   const [tab, setTab] = useState<Tab>("sessions");
   const [openSession, setOpenSession] = useState<Session | null>(null);
   const [creating, setCreating] = useState(false);
+  const [prefillVenue, setPrefillVenue] = useState<string | undefined>();
 
   if (loading) {
     return (
@@ -46,7 +47,7 @@ export default function App() {
     return <Login />;
   }
 
-  if (!user.section || !user.interests?.length) {
+  if (!user.onboarded_at) {
     return <Onboarding user={user} onComplete={(updates) => updateUser(updates)} />;
   }
 
@@ -57,11 +58,15 @@ export default function App() {
       onBack={() => setOpenSession(null)}
     />
   ) : creating ? (
-    <SessionNew user={user} onDone={() => setCreating(false)} />
+    <SessionNew user={user} prefillVenue={prefillVenue} onDone={() => { setCreating(false); setPrefillVenue(undefined); }} />
   ) : tab === "sessions" ? (
     <Sessions user={user} onOpen={setOpenSession} onCreate={() => setCreating(true)} />
   ) : tab === "discover" ? (
-    <Home user={user} onGoingClick={() => {}} />
+    <Home
+      user={user}
+      onGoingClick={() => {}}
+      onHostHere={(venue) => { setPrefillVenue(venue); setCreating(true); }}
+    />
   ) : tab === "pulse" ? (
     <PulsePage user={user} />
   ) : (

@@ -6,16 +6,16 @@ import { INTERESTS } from "../types";
 import { COLOR } from "../lib/pulseTheme";
 import { tap } from "../lib/haptics";
 
-type Props = { user: User; onDone: () => void };
+type Props = { user: User; onDone: () => void; prefillVenue?: string };
 
-export default function SessionNew({ user, onDone }: Props) {
+export default function SessionNew({ user, onDone, prefillVenue }: Props) {
   const { createSession } = useSessions(user);
-  const [mode, setMode] = useState<"paste" | "form">("paste");
+  const [mode, setMode] = useState<"paste" | "form">(prefillVenue ? "form" : "paste");
   const [paste, setPaste] = useState("");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [startsAt, setStartsAt] = useState("");
-  const [venue, setVenue] = useState("");
+  const [venue, setVenue] = useState(prefillVenue ?? "");
   const [tags, setTags] = useState<Interest[]>([]);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);

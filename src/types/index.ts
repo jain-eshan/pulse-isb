@@ -27,6 +27,10 @@ export interface User {
   interests: Interest[];
   wa_phone?: string;
   campus: "mohali" | "hyderabad";
+  ogsg?: number;
+  vibe_friday?: string;
+  chaotic_thing?: string;
+  onboarded_at?: string;
 }
 
 export interface Place {
@@ -95,7 +99,9 @@ export interface Session {
   wa_group_jid?: string;
   archived: boolean;
   created_at: string;
-  creator?: Pick<User, "id" | "name" | "avatar_url">;
+  visible_to_sections?: string[];
+  visible_to_ogsgs?: string[];
+  creator?: Pick<User, "id" | "name" | "avatar_url" | "section">;
   rsvp_counts?: { going: number; maybe: number };
   my_rsvp?: RsvpStatus;
 }

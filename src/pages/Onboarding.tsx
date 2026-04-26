@@ -1,219 +1,183 @@
 import { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
 import type { User, Interest } from "../types";
 import { INTERESTS } from "../types";
+import { SECTIONS, type SectionCode } from "../lib/sections";
 import { COLOR } from "../lib/pulseTheme";
-import Logo from "../components/Logo";
+import { tap } from "../lib/haptics";
+import { ArrowRight, ArrowLeft } from "lucide-react";
 
-type Props = {
-  user: User;
-  onComplete: (updates: Partial<User>) => void;
-};
+type Props = { user: User; onComplete: (updates: Partial<User>) => void };
 
-const SECTIONS = ["A", "B", "C", "D", "E", "F", "G", "H"];
+const FRIDAY_OPTIONS = ["Studying", "Club event", "Cohort dinner", "Party", "Sleeping already"];
 
-export default function Onboarding({ user, onComplete }: Props) {
+export default function Onboarding({ onComplete }: Props) {
   const [step, setStep] = useState(0);
-  const [name, setName] = useState(user.name || "");
-  const [section, setSection] = useState(user.section || "");
-  const [campus, setCampus] = useState<"mohali" | "hyderabad">(user.campus || "mohali");
-  const [interests, setInterests] = useState<Interest[]>(user.interests || []);
+  const [section, setSection] = useState<SectionCode | "">("");
+  const [ogsg, setOgsg] = useState<number | null>(null);
+  const [friday, setFriday] = useState<string>("");
+  const [interests, setInterests] = useState<Interest[]>([]);
+  const [chaotic, setChaotic] = useState("");
 
-  function toggle(i: Interest) {
-    setInterests((prev) => (prev.includes(i) ? prev.filter((x) => x !== i) : [...prev, i]));
-  }
+  const totalSteps = 5;
+
+  function next() { tap(); setStep((s) => Math.min(s + 1, totalSteps - 1)); }
+  function back() { tap(); setStep((s) => Math.max(s - 1, 0)); }
 
   function finish() {
-    onComplete({ name: name.trim(), section, campus, interests });
+    tap();
+    onComplete({
+      section: section || "",
+      ogsg: ogsg ?? undefined,
+      vibe_friday: friday || undefined,
+      interests,
+      chaotic_thing: chaotic.trim() || undefined,
+      onboarded_at: new Date().toISOString(),
+    } as Partial<User>);
   }
 
-  const canAdvance = [
-    name.trim().length > 1,
-    !!section,
-    interests.length >= 2,
-  ];
-
   return (
-    <div
-      className="min-h-screen flex items-start md:items-center justify-center px-5 py-10"
-      style={{ background: COLOR.bg }}
-    >
-      <div className="w-full max-w-md">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-8">
-          <Logo height={28} />
-          <span className="t-label">Step {step + 1} of 3</span>
-        </div>
-
-        {/* Progress */}
-        <div className="flex gap-1.5 mb-8">
-          {[0, 1, 2].map((i) => (
-            <div
-              key={i}
-              className="flex-1 h-1 rounded-full transition-colors duration-300"
-              style={{
-                background: i <= step ? COLOR.navy : COLOR.border,
-              }}
-            />
-          ))}
-        </div>
-
-        <div className="card p-7 min-h-[360px] flex flex-col">
-          <AnimatePresence mode="wait">
-            {step === 0 && (
-              <motion.div
-                key="s0"
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-                transition={{ duration: 0.2 }}
-                className="flex-1 flex flex-col"
-              >
-                <h1 className="t-display mb-2" style={{ fontSize: 28 }}>
-                  Let's set you up.
-                </h1>
-                <p className="t-body mb-6">
-                  A few quick questions, and you're in.
-                </p>
-
-                <div className="mb-5">
-                  <label className="t-label block mb-2">What do people call you?</label>
-                  <input
-                    autoFocus
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    placeholder="First name is fine"
-                    className="w-full px-4 py-3 text-[15px] rounded-[10px] border bg-white focus:outline-none focus:ring-2"
-                    style={{
-                      borderColor: COLOR.border,
-                      color: COLOR.ink,
-                      fontFamily: "'Plus Jakarta Sans', sans-serif",
-                    }}
-                  />
-                </div>
-
-                <div>
-                  <label className="t-label block mb-2">Which campus?</label>
-                  <div className="grid grid-cols-2 gap-2">
-                    {[
-                      { id: "mohali", label: "Mohali" },
-                      { id: "hyderabad", label: "Hyderabad" },
-                    ].map((c) => (
-                      <button
-                        key={c.id}
-                        onClick={() => setCampus(c.id as "mohali" | "hyderabad")}
-                        className="chip"
-                        data-active={campus === c.id}
-                        style={{ padding: "10px 0", textAlign: "center" }}
-                      >
-                        {c.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </motion.div>
-            )}
-
-            {step === 1 && (
-              <motion.div
-                key="s1"
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-                transition={{ duration: 0.2 }}
-                className="flex-1 flex flex-col"
-              >
-                <h1 className="t-display mb-2" style={{ fontSize: 28 }}>
-                  Your <span className="t-italic">section</span>?
-                </h1>
-                <p className="t-body mb-6">
-                  So we can show you what's happening close to home.
-                </p>
-
-                <div className="grid grid-cols-4 gap-2">
-                  {SECTIONS.map((s) => (
-                    <button
-                      key={s}
-                      onClick={() => setSection(s)}
-                      className="chip font-serif"
-                      data-active={section === s}
-                      style={{
-                        padding: "18px 0",
-                        fontSize: 20,
-                        fontWeight: 500,
-                      }}
-                    >
-                      {s}
-                    </button>
-                  ))}
-                </div>
-              </motion.div>
-            )}
-
-            {step === 2 && (
-              <motion.div
-                key="s2"
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-                transition={{ duration: 0.2 }}
-                className="flex-1 flex flex-col"
-              >
-                <h1 className="t-display mb-2" style={{ fontSize: 28 }}>
-                  What are you <span className="t-italic">into</span>?
-                </h1>
-                <p className="t-body mb-6">
-                  Pick at least two — we'll surface the right sessions for you.
-                </p>
-
-                <div className="flex flex-wrap gap-2">
-                  {INTERESTS.map((it) => (
-                    <button
-                      key={it.id}
-                      onClick={() => toggle(it.id)}
-                      className="chip"
-                      data-active={interests.includes(it.id)}
-                    >
-                      {it.label}
-                    </button>
-                  ))}
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          {/* Footer actions */}
-          <div className="flex gap-2 mt-6 pt-5 border-t" style={{ borderColor: COLOR.borderLight }}>
-            {step > 0 && (
-              <button className="btn-ghost" onClick={() => setStep(step - 1)}>
-                Back
-              </button>
-            )}
-            {step < 2 && (
-              <button
-                className="btn-primary flex-1"
-                disabled={!canAdvance[step]}
-                onClick={() => setStep(step + 1)}
-              >
-                Continue
-              </button>
-            )}
-            {step === 2 && (
-              <button
-                className="btn-primary flex-1"
-                disabled={!canAdvance[2]}
-                onClick={finish}
-              >
-                Enter Pulse
-              </button>
-            )}
-          </div>
-        </div>
-
-        <p className="t-meta text-center mt-6">
-          We only ask what we need. No public profile, no feeds.
-        </p>
+    <div className="min-h-screen px-5 md:px-8 py-10 max-w-xl mx-auto" style={{ background: COLOR.bg }}>
+      <div className="flex items-center justify-between mb-8">
+        <p className="t-meta">{step + 1} of {totalSteps}</p>
+        {step > 0 && (
+          <button onClick={back} className="t-meta flex items-center gap-1" style={{ color: COLOR.ink2 }}>
+            <ArrowLeft size={13} /> Back
+          </button>
+        )}
       </div>
+
+      {step === 0 && (
+        <Screen title="Which house are you?" subtitle="Pick your section. Skip if you don't know yet.">
+          <div className="grid grid-cols-2 gap-3">
+            {SECTIONS.map((s) => (
+              <button
+                key={s.code}
+                onClick={() => { tap(); setSection(s.code); }}
+                className="rounded-[14px] p-5 text-left transition-transform"
+                style={{
+                  background: s.tint,
+                  border: `2px solid ${section === s.code ? s.color : "transparent"}`,
+                  transform: section === s.code ? "scale(1.02)" : "none",
+                }}
+              >
+                <p className="font-serif" style={{ fontSize: 22, color: s.color }}>{s.name}</p>
+                <p className="t-meta mt-1">Section {s.code}</p>
+              </button>
+            ))}
+          </div>
+          <SkipNext onSkip={() => { setSection(""); next(); }} onNext={next} />
+        </Screen>
+      )}
+
+      {step === 1 && (
+        <Screen title="OGSG?" subtitle="Your original study group inside the section.">
+          <div className="grid grid-cols-4 gap-2">
+            {Array.from({ length: 12 }, (_, i) => i + 1).map((n) => (
+              <button
+                key={n}
+                onClick={() => { tap(); setOgsg(n); }}
+                className="chip"
+                data-active={ogsg === n}
+                style={{ padding: "12px 0" }}
+              >
+                {n}
+              </button>
+            ))}
+          </div>
+          <SkipNext onSkip={() => { setOgsg(null); next(); }} onNext={next} />
+        </Screen>
+      )}
+
+      {step === 2 && (
+        <Screen title="Friday at 9PM. What's your move?" subtitle="No wrong answer.">
+          <div className="space-y-2">
+            {FRIDAY_OPTIONS.map((opt) => (
+              <button
+                key={opt}
+                onClick={() => { tap(); setFriday(opt); }}
+                className="w-full px-5 py-4 rounded-[12px] text-left transition-colors"
+                style={{
+                  background: friday === opt ? COLOR.navy : COLOR.surface,
+                  color: friday === opt ? "#fff" : COLOR.ink,
+                  border: `1px solid ${COLOR.border}`,
+                }}
+              >
+                {opt}
+              </button>
+            ))}
+          </div>
+          <SkipNext onSkip={() => { setFriday(""); next(); }} onNext={next} />
+        </Screen>
+      )}
+
+      {step === 3 && (
+        <Screen title="What would you actually show up for?" subtitle="Pick a few. We'll surface those.">
+          <div className="flex flex-wrap gap-2">
+            {INTERESTS.map((it) => {
+              const on = interests.includes(it.id);
+              return (
+                <button
+                  key={it.id}
+                  onClick={() => {
+                    tap();
+                    setInterests((p) => on ? p.filter((x) => x !== it.id) : [...p, it.id]);
+                  }}
+                  className="chip"
+                  data-active={on}
+                >
+                  {it.emoji} {it.label}
+                </button>
+              );
+            })}
+          </div>
+          <SkipNext onSkip={() => { setInterests([]); next(); }} onNext={next} />
+        </Screen>
+      )}
+
+      {step === 4 && (
+        <Screen title="Most chaotic thing you've done at ISB?" subtitle="One line. Optional. Shown on your profile.">
+          <textarea
+            value={chaotic}
+            onChange={(e) => setChaotic(e.target.value.slice(0, 80))}
+            rows={3}
+            placeholder="e.g. Showed up to FADM exam in pyjamas after an all-nighter"
+            className="w-full px-4 py-3 rounded-[12px] focus:outline-none focus:ring-2"
+            style={{
+              border: `1px solid ${COLOR.border}`,
+              background: COLOR.surface,
+              fontFamily: "'Plus Jakarta Sans', sans-serif",
+              fontSize: 14,
+            }}
+          />
+          <p className="t-meta mt-1">{chaotic.length}/80</p>
+          <button onClick={finish} className="btn-primary w-full mt-6 flex items-center justify-center gap-2">
+            Let's go <ArrowRight size={16} />
+          </button>
+        </Screen>
+      )}
+    </div>
+  );
+}
+
+function Screen({ title, subtitle, children }: { title: string; subtitle?: string; children: React.ReactNode }) {
+  return (
+    <div className="space-y-5">
+      <div>
+        <h1 className="t-display" style={{ fontSize: 30 }}>{title}</h1>
+        {subtitle && <p className="t-body mt-2">{subtitle}</p>}
+      </div>
+      {children}
+    </div>
+  );
+}
+
+function SkipNext({ onSkip, onNext }: { onSkip: () => void; onNext: () => void }) {
+  return (
+    <div className="flex gap-2 mt-6">
+      <button onClick={onSkip} className="btn-ghost flex-1">Skip</button>
+      <button onClick={onNext} className="btn-primary flex-1 flex items-center justify-center gap-2">
+        Next <ArrowRight size={14} />
+      </button>
     </div>
   );
 }

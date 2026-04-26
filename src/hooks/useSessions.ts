@@ -12,7 +12,7 @@ export function useSessions(user: User | null) {
       .from("sessions")
       .select(`
         *,
-        creator:users!sessions_creator_id_fkey(id,name,avatar_url),
+        creator:users!sessions_creator_id_fkey(id,name,avatar_url,section),
         rsvps(user_id,status)
       `)
       .eq("archived", false)
