@@ -10,16 +10,16 @@ export function useAuth() {
     // Restore session on mount
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
-        loadProfile(session.user.id);
+        gateAndLoadProfile(session.user.email, session.user.id);
       } else {
         setLoading(false);
       }
     });
 
-    // React to login / logout events (including magic link callback)
+    // React to login / logout events (including magic link / OAuth callback)
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session?.user) {
-        loadProfile(session.user.id);
+        gateAndLoadProfile(session.user.email, session.user.id);
       } else {
         setUser(null);
         setLoading(false);
@@ -28,6 +28,18 @@ export function useAuth() {
 
     return () => subscription.unsubscribe();
   }, []);
+
+  // Reject any logged-in user whose email isn't @isb.edu
+  async function gateAndLoadProfile(email: string | undefined, uid: string) {
+    if (!email || !email.toLowerCase().endsWith("@isb.edu")) {
+      console.warn("[auth] non-ISB email signed in, signing out:", email);
+      await supabase.auth.signOut();
+      setUser(null);
+      setLoading(false);
+      return;
+    }
+    loadProfile(uid);
+  }
 
   async function loadProfile(uid: string) {
     const { data } = await supabase
