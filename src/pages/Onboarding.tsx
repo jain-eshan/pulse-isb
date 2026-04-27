@@ -6,7 +6,7 @@ import { COLOR } from "../lib/pulseTheme";
 import { tap } from "../lib/haptics";
 import { ArrowRight, ArrowLeft } from "lucide-react";
 
-type Props = { user: User; onComplete: (updates: Partial<User>) => void };
+type Props = { user: User; onComplete: (updates: Partial<User>) => Promise<void> | void };
 
 const FRIDAY_OPTIONS = ["Studying", "Club event", "Cohort dinner", "Party", "Sleeping already"];
 
@@ -17,22 +17,39 @@ export default function Onboarding({ onComplete }: Props) {
   const [friday, setFriday] = useState<string>("");
   const [interests, setInterests] = useState<Interest[]>([]);
   const [chaotic, setChaotic] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
 
   const totalSteps = 5;
 
   function next() { tap(); setStep((s) => Math.min(s + 1, totalSteps - 1)); }
   function back() { tap(); setStep((s) => Math.max(s - 1, 0)); }
 
-  function finish() {
+  async function finish() {
+    if (busy) return;
     tap();
-    onComplete({
-      section: section || "",
-      ogsg: ogsg ?? undefined,
-      vibe_friday: friday || undefined,
-      interests,
-      chaotic_thing: chaotic.trim() || undefined,
-      onboarded_at: new Date().toISOString(),
-    } as Partial<User>);
+    setBusy(true);
+    setErr(null);
+    try {
+      await onComplete({
+        section: section || "",
+        ogsg: ogsg ?? undefined,
+        vibe_friday: friday || undefined,
+        interests,
+        chaotic_thing: chaotic.trim() || undefined,
+        onboarded_at: new Date().toISOString(),
+      } as Partial<User>);
+      // Force a fresh fetch so the App-level gate re-evaluates with updated user
+      window.location.reload();
+    } catch (e: unknown) {
+      console.error("[Onboarding] failed to save:", e);
+      setErr(
+        e instanceof Error
+          ? e.message
+          : "Couldn't save your answers. Try again — or skip and we'll set things up later."
+      );
+      setBusy(false);
+    }
   }
 
   return (
@@ -150,8 +167,20 @@ export default function Onboarding({ onComplete }: Props) {
             }}
           />
           <p className="t-meta mt-1">{chaotic.length}/80</p>
-          <button onClick={finish} className="btn-primary w-full mt-6 flex items-center justify-center gap-2">
-            Let's go <ArrowRight size={16} />
+          {err && (
+            <div
+              className="rounded-[10px] px-4 py-3 text-sm mt-4"
+              style={{ background: "#FEF2F2", border: "1px solid #FECACA", color: "#B91C1C" }}
+            >
+              {err}
+            </div>
+          )}
+          <button
+            onClick={finish}
+            disabled={busy}
+            className="btn-primary w-full mt-6 flex items-center justify-center gap-2"
+          >
+            {busy ? "Saving…" : <>Let's go <ArrowRight size={16} /></>}
           </button>
         </Screen>
       )}

@@ -82,12 +82,16 @@ export function useAuth() {
 
   async function updateUser(updates: Partial<User>) {
     if (!user) return;
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("users")
       .update(updates)
       .eq("id", user.id)
       .select("*")
       .single();
+    if (error) {
+      console.error("[useAuth] updateUser failed:", error);
+      throw error;
+    }
     if (data) setUser(data);
   }
 
