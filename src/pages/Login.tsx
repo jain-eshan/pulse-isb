@@ -5,7 +5,7 @@ import Logo from "../components/Logo";
 import { COLOR } from "../lib/pulseTheme";
 
 export default function Login() {
-  const { sendMagicLink } = useAuth();
+  const { sendMagicLink, signInWithAzure } = useAuth();
   const [email, setEmail] = useState("");
   const [busy, setBusy] = useState(false);
   const [sent, setSent] = useState(false);
@@ -23,6 +23,17 @@ export default function Login() {
       setSent(true);
       setBusy(false);
     }
+  }
+
+  async function handleAzure() {
+    setBusy(true);
+    setError(null);
+    const err = await signInWithAzure();
+    if (err) {
+      setError(err);
+      setBusy(false);
+    }
+    // On success, browser redirects to Azure → no need to setBusy(false)
   }
 
   return (
@@ -67,6 +78,31 @@ export default function Login() {
             <p className="t-body mb-8" style={{ color: COLOR.ink2 }}>
               Peer sessions, wishlist ideas, and the spots your cohort actually goes — for ISB Mohali PGP Co'27.
             </p>
+
+            <button
+              onClick={handleAzure}
+              disabled={busy}
+              className="w-full px-5 py-3.5 rounded-[12px] font-semibold text-sm flex items-center justify-center gap-2 mb-3"
+              style={{
+                background: "#fff",
+                color: "#0F0F0F",
+                border: `1.5px solid ${COLOR.border}`,
+              }}
+            >
+              <svg width="16" height="16" viewBox="0 0 21 21" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                <rect x="1" y="1" width="9" height="9" fill="#F25022"/>
+                <rect x="11" y="1" width="9" height="9" fill="#7FBA00"/>
+                <rect x="1" y="11" width="9" height="9" fill="#00A4EF"/>
+                <rect x="11" y="11" width="9" height="9" fill="#FFB900"/>
+              </svg>
+              Sign in with ISB email
+            </button>
+
+            <div className="flex items-center gap-3 my-4">
+              <div className="flex-1 h-px" style={{ background: COLOR.border }} />
+              <span className="t-meta">or</span>
+              <div className="flex-1 h-px" style={{ background: COLOR.border }} />
+            </div>
 
             <form onSubmit={handleSubmit} className="space-y-3">
               <div className="relative">

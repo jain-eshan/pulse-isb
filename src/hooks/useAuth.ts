@@ -39,6 +39,17 @@ export function useAuth() {
     setLoading(false);
   }
 
+  async function signInWithAzure(): Promise<string | null> {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "azure",
+      options: {
+        redirectTo: window.location.origin,
+        scopes: "openid email profile",
+      },
+    });
+    return error?.message ?? null;
+  }
+
   // Returns null on success, error string on failure
   async function sendMagicLink(email: string): Promise<string | null> {
     const trimmed = email.trim().toLowerCase();
@@ -68,5 +79,5 @@ export function useAuth() {
     if (data) setUser(data);
   }
 
-  return { user, loading, sendMagicLink, signOut, updateUser };
+  return { user, loading, sendMagicLink, signInWithAzure, signOut, updateUser };
 }

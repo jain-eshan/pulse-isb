@@ -23,7 +23,23 @@ export function useSessions(user: User | null) {
       console.error("[useSessions] query error:", error);
     }
 
-    const mapped: Session[] = (data ?? []).map((s: any) => ({
+    // Apply visibility filter — match user's section/OGSG, or creator always sees own
+    const userOgsgKey = user.section && user.ogsg ? `${user.section}-${user.ogsg}` : null;
+    const visibleData = (data ?? []).filter((s: any) => {
+      const sections: string[] = s.visible_to_sections ?? [];
+      const ogsgs: string[] = s.visible_to_ogsgs ?? [];
+      // No restrictions = visible to all
+      if (sections.length === 0 && ogsgs.length === 0) return true;
+      // Creator always sees their own
+      if (s.creator_id === user.id) return true;
+      // Restricted to sections — does user's section match?
+      if (sections.length > 0 && user.section && sections.includes(user.section)) return true;
+      // Restricted to OGSGs — does user's OGSG match?
+      if (ogsgs.length > 0 && userOgsgKey && ogsgs.includes(userOgsgKey)) return true;
+      return false;
+    });
+
+    const mapped: Session[] = visibleData.map((s: any) => ({
       ...s,
       rsvp_counts: {
         going: s.rsvps.filter((r: any) => r.status === "going").length,

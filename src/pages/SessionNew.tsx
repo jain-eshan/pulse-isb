@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { ArrowLeft, Sparkles, AlertCircle } from "lucide-react";
 import { useSessions } from "../hooks/useSessions";
-import type { User, Interest } from "../types";
+import type { User, Interest, Session } from "../types";
 import { INTERESTS } from "../types";
+import { SECTIONS, sectionByCode, type SectionCode } from "../lib/sections";
 import { COLOR } from "../lib/pulseTheme";
 import { tap } from "../lib/haptics";
 
@@ -17,6 +18,8 @@ export default function SessionNew({ user, onDone, prefillVenue }: Props) {
   const [startsAt, setStartsAt] = useState("");
   const [venue, setVenue] = useState(prefillVenue ?? "");
   const [tags, setTags] = useState<Interest[]>([]);
+  const [visibility, setVisibility] = useState<"all" | "section" | "ogsg" | "custom">("all");
+  const [customSections, setCustomSections] = useState<SectionCode[]>([]);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [parseWarn, setParseWarn] = useState(false);
@@ -64,13 +67,21 @@ export default function SessionNew({ user, onDone, prefillVenue }: Props) {
     setBusy(true);
     setErr(null);
     try {
+      const visible_to_sections =
+        visibility === "section" && user.section ? [user.section] :
+        visibility === "custom" ? customSections : [];
+      const visible_to_ogsgs =
+        visibility === "ogsg" && user.section && user.ogsg ? [`${user.section}-${user.ogsg}`] : [];
+
       await createSession({
         title: title.trim(),
         description: description.trim() || undefined,
         starts_at: new Date(startsAt).toISOString(),
         venue: venue.trim() || undefined,
         tags,
-      });
+        visible_to_sections,
+        visible_to_ogsgs,
+      } as Partial<Session>);
       onDone();
     } catch {
       setErr("Something went wrong. Try again.");
@@ -196,6 +207,46 @@ export default function SessionNew({ user, onDone, prefillVenue }: Props) {
                   );
                 })}
               </div>
+            </Field>
+
+            <Field label="Who can see this?">
+              <div className="flex flex-wrap gap-2">
+                <button onClick={() => setVisibility("all")} className="chip" data-active={visibility === "all"}>
+                  Everyone
+                </button>
+                {user.section && (
+                  <button onClick={() => setVisibility("section")} className="chip" data-active={visibility === "section"}>
+                    Just {sectionByCode(user.section)?.name ?? "my section"}
+                  </button>
+                )}
+                {user.section && user.ogsg && (
+                  <button onClick={() => setVisibility("ogsg")} className="chip" data-active={visibility === "ogsg"}>
+                    My OGSG only
+                  </button>
+                )}
+                <button onClick={() => setVisibility("custom")} className="chip" data-active={visibility === "custom"}>
+                  Custom
+                </button>
+              </div>
+              {visibility === "custom" && (
+                <div className="flex flex-wrap gap-2 mt-3">
+                  {SECTIONS.map((s) => {
+                    const on = customSections.includes(s.code);
+                    return (
+                      <button
+                        key={s.code}
+                        onClick={() =>
+                          setCustomSections((p) => (on ? p.filter((x) => x !== s.code) : [...p, s.code]))
+                        }
+                        className="chip"
+                        data-active={on}
+                      >
+                        {s.name}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
             </Field>
 
             <div className="flex gap-2 pt-2">
