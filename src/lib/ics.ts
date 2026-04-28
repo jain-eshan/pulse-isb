@@ -56,6 +56,49 @@ export function buildIcs(ev: IcsEvent): string {
   return lines.join("\r\n");
 }
 
+/**
+ * Magic link to add this event to Google Calendar (web).
+ * Opens Google Calendar with event pre-filled — user just clicks "Save".
+ */
+export function googleCalendarUrl(ev: IcsEvent): string {
+  const start = fmtIcsDate(ev.starts_at);
+  const end = fmtIcsDate(
+    ev.ends_at ?? new Date(new Date(ev.starts_at).getTime() + 60 * 60 * 1000).toISOString()
+  );
+  const params = new URLSearchParams({
+    action: "TEMPLATE",
+    text: ev.title,
+    dates: `${start}/${end}`,
+  });
+  if (ev.description) params.set("details", ev.description + (ev.url ? `\n\n${ev.url}` : ""));
+  if (ev.venue) params.set("location", ev.venue);
+  return `https://calendar.google.com/calendar/render?${params.toString()}`;
+}
+
+/**
+ * Magic link to add this event to Outlook Calendar (web).
+ */
+export function outlookCalendarUrl(ev: IcsEvent): string {
+  const end = ev.ends_at ?? new Date(new Date(ev.starts_at).getTime() + 60 * 60 * 1000).toISOString();
+  const params = new URLSearchParams({
+    path: "/calendar/action/compose",
+    rru: "addevent",
+    subject: ev.title,
+    startdt: ev.starts_at,
+    enddt: end,
+  });
+  if (ev.description) params.set("body", ev.description + (ev.url ? `\n\n${ev.url}` : ""));
+  if (ev.venue) params.set("location", ev.venue);
+  return `https://outlook.live.com/calendar/0/deeplink/compose?${params.toString()}`;
+}
+
+/**
+ * Magic link for Office 365 / Outlook for Business.
+ */
+export function office365CalendarUrl(ev: IcsEvent): string {
+  return outlookCalendarUrl(ev).replace("outlook.live.com", "outlook.office.com");
+}
+
 export function downloadIcs(ev: IcsEvent) {
   const ics = buildIcs(ev);
   const blob = new Blob([ics], { type: "text/calendar;charset=utf-8" });
