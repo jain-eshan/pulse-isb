@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { CheckCircle2, LogOut, MessageCircle, RotateCcw } from "lucide-react";
+import { CheckCircle2, LogOut, MapPin, MessageCircle, RotateCcw } from "lucide-react";
 import type { User } from "../types";
 import { INTERESTS } from "../types";
 import { COLOR } from "../lib/pulseTheme";
@@ -12,7 +12,7 @@ interface Props {
   onToggleLocation: (enabled: boolean) => void;
 }
 
-export default function ProfilePage({ user, onSignOut }: Props) {
+export default function ProfilePage({ user, onSignOut, onToggleLocation }: Props) {
   const [linkCode, setLinkCode] = useState<string | null>(null);
   const [linkBusy, setLinkBusy] = useState(false);
 
@@ -167,6 +167,51 @@ export default function ProfilePage({ user, onSignOut }: Props) {
             </code>
           </div>
         )}
+      </div>
+
+      {/* Location sharing */}
+      <div className="card p-6 mb-6">
+        <div className="flex items-center gap-2 mb-1">
+          <MapPin size={16} strokeWidth={1.75} style={{ color: COLOR.navy }} />
+          <p className="t-label">Campus Location</p>
+        </div>
+        <p className="t-body mb-4">
+          Share your approximate location on campus so your cohort can see where the crowd is. Only visible to other Pulse users.
+        </p>
+        <button
+          onClick={() => onToggleLocation(!user.location_sharing)}
+          className="flex items-center gap-3 w-full px-4 py-3 rounded-[10px] transition-colors"
+          style={{
+            background: user.location_sharing ? "#DCFCE7" : COLOR.bg,
+            border: `1.5px solid ${user.location_sharing ? "#86EFAC" : COLOR.border}`,
+          }}
+        >
+          {/* Toggle pill */}
+          <div
+            className="relative flex-shrink-0"
+            style={{ width: 40, height: 22 }}
+          >
+            <div
+              className="absolute inset-0 rounded-full transition-colors"
+              style={{ background: user.location_sharing ? "#16A34A" : COLOR.borderLight }}
+            />
+            <div
+              className="absolute top-1 rounded-full transition-all"
+              style={{
+                width: 14, height: 14,
+                background: "#fff",
+                left: user.location_sharing ? 22 : 4,
+                boxShadow: "0 1px 3px rgba(0,0,0,0.2)",
+              }}
+            />
+          </div>
+          <span
+            className="text-sm font-semibold"
+            style={{ color: user.location_sharing ? "#15803D" : COLOR.ink2 }}
+          >
+            {user.location_sharing ? "Sharing — visible on campus map" : "Not sharing location"}
+          </span>
+        </button>
       </div>
 
       {/* Sign out */}

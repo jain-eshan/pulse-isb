@@ -1,8 +1,10 @@
 import { useState } from "react";
-import { Plus, Calendar } from "lucide-react";
+import { Plus, Calendar, Users } from "lucide-react";
 import { useSessions } from "../hooks/useSessions";
+import { useCampusActivity } from "../hooks/useCampusActivity";
 import SessionCard from "../components/SessionCard";
 import EmptyState from "../components/EmptyState";
+import CampusHeatmap from "../components/CampusHeatmap";
 import type { User, Session } from "../types";
 import { COLOR } from "../lib/pulseTheme";
 import { tap } from "../lib/haptics";
@@ -15,7 +17,9 @@ type Props = {
 
 export default function Sessions({ user, onOpen, onCreate }: Props) {
   const { sessions, loading } = useSessions(user);
+  const { locations, count: activeCount } = useCampusActivity();
   const [filter, setFilter] = useState<"all" | "mine">("all");
+  const [showHeatmap, setShowHeatmap] = useState(false);
 
   const list =
     filter === "mine"
@@ -36,9 +40,28 @@ export default function Sessions({ user, onOpen, onCreate }: Props) {
           Peer sessions, workshops, and the little moments that don't make it to the official calendar.
         </p>
 
-        <div className="mt-6 flex gap-2">
+        <div className="mt-6 flex gap-2 flex-wrap">
           <FilterPill label="All" active={filter === "all"} onClick={() => setFilter("all")} />
           <FilterPill label="My sessions" active={filter === "mine"} onClick={() => setFilter("mine")} />
+          {/* Live campus activity pill */}
+          <button
+            onClick={() => { tap(); setShowHeatmap(true); }}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-colors"
+            style={{
+              background: activeCount > 0 ? "#DCFCE7" : COLOR.surface,
+              color: activeCount > 0 ? "#15803D" : COLOR.ink3,
+              border: `1.5px solid ${activeCount > 0 ? "#86EFAC" : COLOR.borderLight}`,
+            }}
+          >
+            {activeCount > 0 && (
+              <span
+                className="w-1.5 h-1.5 rounded-full animate-pulse"
+                style={{ background: "#16A34A" }}
+              />
+            )}
+            <Users size={11} strokeWidth={2} />
+            {activeCount > 0 ? `${activeCount} on campus` : "Campus map"}
+          </button>
           <span className="flex-1" />
           <button
             onClick={() => { tap(); onCreate(); }}
@@ -78,6 +101,14 @@ export default function Sessions({ user, onOpen, onCreate }: Props) {
           <SessionCard key={s.id} session={s} onClick={() => onOpen(s)} />
         ))}
       </main>
+
+      {/* Campus heatmap modal */}
+      {showHeatmap && (
+        <CampusHeatmap
+          locations={locations}
+          onClose={() => setShowHeatmap(false)}
+        />
+      )}
 
       {/* Mobile FAB */}
       <button

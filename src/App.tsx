@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Calendar, Compass, Lightbulb, User as UserIcon } from "lucide-react";
 import { useAuth } from "./hooks/useAuth";
+import { useLocationBroadcast } from "./hooks/useLocation";
 import { supabase } from "./lib/supabase";
 import Login from "./pages/Login";
 import Onboarding from "./pages/Onboarding";
@@ -25,6 +26,7 @@ const NAV: { key: Tab; label: string; Icon: React.ComponentType<{ size?: number;
 
 export default function App() {
   const { user, loading, signOut, updateUser } = useAuth();
+  useLocationBroadcast(user);   // broadcasts every 30s when location_sharing = true
   const [tab, setTab] = useState<Tab>("sessions");
   const [openSession, setOpenSession] = useState<Session | null>(null);
   const [creating, setCreating] = useState(false);
