@@ -4,8 +4,9 @@ import { useSessions } from "../hooks/useSessions";
 import type { User, Interest, Session } from "../types";
 import { INTERESTS } from "../types";
 import { SECTIONS, sectionByCode, type SectionCode } from "../lib/sections";
-import { COLOR } from "../lib/pulseTheme";
+import { COLOR, FONT } from "../lib/pulseTheme";
 import { tap } from "../lib/haptics";
+import CoverBanner, { COVER_THEMES } from "../components/CoverBanner";
 
 type Props = { user: User; onDone: () => void; prefillVenue?: string };
 
@@ -143,6 +144,29 @@ export default function SessionNew({ user, onDone, prefillVenue }: Props) {
 
         {mode === "form" && (
           <div className="card p-6 space-y-5">
+            {/* Live cover preview — updates as the user types title and picks a category */}
+            <div>
+              <label className="t-label block mb-2">Cover preview</label>
+              <div
+                className="rounded-[14px] overflow-hidden"
+                style={{ boxShadow: "0 4px 16px rgba(0,0,0,0.10)" }}
+              >
+                <CoverBanner
+                  title={title || "Your session title"}
+                  tag={tags[0]}
+                  height={140}
+                  showPill={!!tags[0]}
+                />
+              </div>
+              <p
+                className="t-meta mt-2"
+                style={{ fontSize: 11 }}
+              >
+                Pick a category below to set the cover colour. The first one is
+                used as the cover theme.
+              </p>
+            </div>
+
             {/* Soft parse warning — not a hard error */}
             {parseWarn && (
               <div
@@ -189,24 +213,78 @@ export default function SessionNew({ user, onDone, prefillVenue }: Props) {
                 }}
               />
             </Field>
-            <Field label="Tags">
+            <Field label="Category">
               <div className="flex flex-wrap gap-2">
                 {INTERESTS.map((it) => {
                   const on = tags.includes(it.id);
+                  const isPrimary = tags[0] === it.id;
+                  const theme = COVER_THEMES[it.id];
                   return (
                     <button
                       key={it.id}
-                      onClick={() =>
-                        setTags((p) => (on ? p.filter((x) => x !== it.id) : [...p, it.id]))
-                      }
-                      className="chip"
-                      data-active={on}
+                      onClick={() => {
+                        tap();
+                        setTags((p) => {
+                          if (on) return p.filter((x) => x !== it.id);
+                          // New picks become the primary (first) — drives the cover
+                          return [it.id, ...p.filter((x) => x !== it.id)];
+                        });
+                      }}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 7,
+                        padding: "7px 12px",
+                        borderRadius: 99,
+                        fontSize: 12,
+                        fontWeight: 700,
+                        background: on ? COLOR.navy : COLOR.surface,
+                        color: on ? "#fff" : COLOR.ink2,
+                        border: `1.5px solid ${on ? COLOR.navy : COLOR.border}`,
+                        cursor: "pointer",
+                        fontFamily: FONT.sans,
+                      }}
                     >
+                      {/* Colour swatch — matches cover banner gradient */}
+                      {theme && (
+                        <span
+                          style={{
+                            width: 12,
+                            height: 12,
+                            borderRadius: 3,
+                            background: `linear-gradient(135deg, ${theme.from}, ${theme.to})`,
+                            border: `1.5px solid ${on ? "#fff" : COLOR.borderLight}`,
+                            flexShrink: 0,
+                          }}
+                        />
+                      )}
                       {it.label}
+                      {isPrimary && (
+                        <span
+                          style={{
+                            fontSize: 9,
+                            fontWeight: 800,
+                            letterSpacing: "0.05em",
+                            opacity: 0.85,
+                            textTransform: "uppercase",
+                          }}
+                        >
+                          · cover
+                        </span>
+                      )}
                     </button>
                   );
                 })}
               </div>
+              {tags.length > 1 && (
+                <p
+                  className="t-meta mt-2"
+                  style={{ fontSize: 11 }}
+                >
+                  Tap any selected category again to remove it. Reorder by
+                  re-tapping — the most-recently picked one becomes the cover.
+                </p>
+              )}
             </Field>
 
             <Field label="Who can see this?">

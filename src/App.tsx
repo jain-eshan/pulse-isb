@@ -30,7 +30,7 @@ const LEFT_NAV: { key: Tab; label: string; Icon: React.ComponentType<{ size?: nu
 
 export default function App() {
   const { user, loading, signOut, updateUser } = useAuth();
-  useLocationBroadcast(user);   // broadcasts every 30s when location_sharing = true
+  const myLocationState = useLocationBroadcast(user);
   const { locations: campusLocations } = useCampusActivity();
   const [tab, setTab] = useState<Tab>("sessions");
   const [openSession, setOpenSession] = useState<Session | null>(null);
@@ -278,7 +278,11 @@ export default function App() {
       {showCampusModal && (
         <CampusHeatmap
           locations={campusLocations}
+          myLocation={myLocationState}
           onClose={() => setShowCampusModal(false)}
+          onEnableSharing={() => {
+            if (user && !user.location_sharing) updateUser({ location_sharing: true });
+          }}
         />
       )}
 
