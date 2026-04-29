@@ -16,28 +16,35 @@ export interface CampusPlace {
   category: ZoneCategory;
   lat: number;
   lng: number;
+  /** Emoji shown in the place marker. */
+  icon: string;
+  /** Priority places get the larger marker + label on the map. */
+  priority?: boolean;
 }
 
 export const CAMPUS_PLACES: CampusPlace[] = [
-  { id: "main-gate",  num: 1,  label: "Main Gate",          short: "Gate",   category: "gate",    lat: 30.669760, lng: 76.728295 },
-  { id: "pools",      num: 24, label: "Swimming Pools",     short: "Pool",   category: "sports",  lat: 30.668377, lng: 76.724983 },
-  { id: "wellness",   num: 25, label: "Wellness Centre",    short: "Wellness", category: "amenity", lat: 30.667991, lng: 76.725318 },
-  { id: "recreation", num: 26, label: "Recreation Centre",  short: "Rec",    category: "amenity",  lat: 30.667691, lng: 76.725272 },
-  { id: "admin",      num: 8,  label: "Admin Square",       short: "Admin",  category: "academic", lat: 30.668555, lng: 76.726923 },
-  { id: "circle",     num: 9,  label: "Circle (VC/CCO)",    short: "Circle", category: "academic", lat: 30.669224, lng: 76.726844 },
-  { id: "academic",   num: 11, label: "Academic Square",    short: "Acad",   category: "academic", lat: 30.667898, lng: 76.726849 },
-  { id: "auditorium", num: 12, label: "Godrej Auditorium",  short: "Audi",   category: "academic", lat: 30.669166, lng: 76.725983 },
-  { id: "jujus",      num: 15, label: "Café Juju's",        short: "Juju's", category: "dining",   lat: 30.668813, lng: 76.725554 },
-  { id: "sdr",        num: 16, label: "Student Dining (SDR)", short: "SDR",  category: "dining",   lat: 30.668898, lng: 76.725437 },
-  { id: "basketball", num: 28, label: "Basketball Court",   short: "BBall",  category: "sports",   lat: 30.667438, lng: 76.726271 },
-  { id: "tennis",     num: 29, label: "Tennis Courts",      short: "Tennis", category: "sports",   lat: 30.667072, lng: 76.726400 },
-  { id: "sv1b",       num: 35, label: "SV-1B",              short: "SV-1B",  category: "housing",  lat: 30.667349, lng: 76.725172 },
-  { id: "sv1a",       num: 33, label: "SV-1A",              short: "SV-1A",  category: "housing",  lat: 30.667676, lng: 76.725087 },
-  { id: "eh1",        num: 36, label: "Executive Sq EH-1",  short: "EH-1",   category: "housing",  lat: 30.668487, lng: 76.724164 },
-  { id: "eh2",        num: 38, label: "Executive Sq EH-2",  short: "EH-2",   category: "housing",  lat: 30.668743, lng: 76.724228 },
-  { id: "sv2b",       num: 39, label: "SV-2B",              short: "SV-2B",  category: "housing",  lat: 30.668034, lng: 76.724491 },
-  { id: "gazebo",     num: 41, label: "Gazebo",             short: "Gazebo", category: "amenity",  lat: 30.667632, lng: 76.724440 },
+  { id: "main-gate",  num: 1,  label: "Main Gate",          short: "Gate",     category: "gate",     icon: "🚪", lat: 30.669760, lng: 76.728295 },
+  { id: "pools",      num: 24, label: "Swimming Pools",     short: "Pool",     category: "sports",   icon: "🏊", lat: 30.668377, lng: 76.724983 },
+  { id: "wellness",   num: 25, label: "Wellness Centre",    short: "Wellness", category: "amenity",  icon: "🧘", lat: 30.667991, lng: 76.725318 },
+  { id: "recreation", num: 26, label: "Recreation Centre",  short: "Rec",      category: "amenity",  icon: "🎱", lat: 30.667691, lng: 76.725272, priority: true },
+  { id: "admin",      num: 8,  label: "Admin Square",       short: "Admin",    category: "academic", icon: "🏛️", lat: 30.668555, lng: 76.726923 },
+  { id: "circle",     num: 9,  label: "Circle (VC/CCO)",    short: "Circle",   category: "academic", icon: "⭕", lat: 30.669224, lng: 76.726844 },
+  { id: "academic",   num: 11, label: "Academic Square",    short: "Acad",     category: "academic", icon: "📚", lat: 30.667898, lng: 76.726849, priority: true },
+  { id: "auditorium", num: 12, label: "Godrej Auditorium",  short: "Audi",     category: "academic", icon: "🎤", lat: 30.669166, lng: 76.725983 },
+  { id: "jujus",      num: 15, label: "Café Juju's",        short: "Juju's",   category: "dining",   icon: "☕", lat: 30.668813, lng: 76.725554, priority: true },
+  { id: "sdr",        num: 16, label: "Student Dining (SDR)", short: "SDR",    category: "dining",   icon: "🍜", lat: 30.668898, lng: 76.725437, priority: true },
+  { id: "basketball", num: 28, label: "Basketball Court",   short: "BBall",    category: "sports",   icon: "🏀", lat: 30.667438, lng: 76.726271, priority: true },
+  { id: "tennis",     num: 29, label: "Tennis Courts",      short: "Tennis",   category: "sports",   icon: "🎾", lat: 30.667072, lng: 76.726400, priority: true },
+  { id: "sv1b",       num: 35, label: "SV-1B",              short: "SV-1B",    category: "housing",  icon: "🏠", lat: 30.667349, lng: 76.725172, priority: true },
+  { id: "sv1a",       num: 33, label: "SV-1A",              short: "SV-1A",    category: "housing",  icon: "🏠", lat: 30.667676, lng: 76.725087, priority: true },
+  { id: "eh1",        num: 36, label: "Executive Sq EH-1",  short: "EH-1",     category: "housing",  icon: "🏢", lat: 30.668487, lng: 76.724164 },
+  { id: "eh2",        num: 38, label: "Executive Sq EH-2",  short: "EH-2",     category: "housing",  icon: "🏢", lat: 30.668743, lng: 76.724228 },
+  { id: "sv2b",       num: 39, label: "SV-2B",              short: "SV-2B",    category: "housing",  icon: "🏠", lat: 30.668034, lng: 76.724491, priority: true },
+  { id: "gazebo",     num: 41, label: "Gazebo",             short: "Gazebo",   category: "amenity",  icon: "🌿", lat: 30.667632, lng: 76.724440 },
 ];
+
+/** Centre point used by the Leaflet map view. */
+export const CAMPUS_CENTER: [number, number] = [30.6685, 76.7257];
 
 /** Bounding box covering all known places (with a small margin). */
 export const CAMPUS_BBOX = {
