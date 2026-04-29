@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
-import { Calendar, Compass, Lightbulb, User as UserIcon } from "lucide-react";
+import { Calendar, Compass, Lightbulb, MapPin, Plus, User as UserIcon } from "lucide-react";
 import { useAuth } from "./hooks/useAuth";
 import { useLocationBroadcast } from "./hooks/useLocation";
+import { useCampusActivity } from "./hooks/useCampusActivity";
 import { supabase } from "./lib/supabase";
 import Login from "./pages/Login";
 import Onboarding from "./pages/Onboarding";
@@ -11,26 +12,31 @@ import SessionNew from "./pages/SessionNew";
 import PulsePage from "./pages/PulsePage";
 import Home from "./pages/Home";
 import ProfilePage from "./pages/ProfilePage";
+import CampusHeatmap from "./components/CampusHeatmap";
 import Logo, { LogoMark } from "./components/Logo";
 import { COLOR } from "./lib/pulseTheme";
+import { tap } from "./lib/haptics";
 import type { Session } from "./types";
 
-type Tab = "sessions" | "discover" | "pulse" | "profile";
+type Tab = "sessions" | "discover" | "wishlist" | "campus" | "profile";
 
-const NAV: { key: Tab; label: string; Icon: React.ComponentType<{ size?: number; strokeWidth?: number; color?: string }> }[] = [
-  { key: "sessions", label: "Sessions", Icon: Calendar },
+const LEFT_NAV: { key: Tab; label: string; Icon: React.ComponentType<{ size?: number; strokeWidth?: number; color?: string }> }[] = [
+  { key: "sessions", label: "Pulse",    Icon: Calendar },
   { key: "discover", label: "Discover", Icon: Compass },
-  { key: "pulse",    label: "Wishlist", Icon: Lightbulb },
+  { key: "wishlist", label: "Wishlist", Icon: Lightbulb },
+  { key: "campus",   label: "Campus",   Icon: MapPin },
   { key: "profile",  label: "You",      Icon: UserIcon },
 ];
 
 export default function App() {
   const { user, loading, signOut, updateUser } = useAuth();
   useLocationBroadcast(user);   // broadcasts every 30s when location_sharing = true
+  const { locations: campusLocations } = useCampusActivity();
   const [tab, setTab] = useState<Tab>("sessions");
   const [openSession, setOpenSession] = useState<Session | null>(null);
   const [creating, setCreating] = useState(false);
   const [prefillVenue, setPrefillVenue] = useState<string | undefined>();
+  const [showCampusModal, setShowCampusModal] = useState(false);
 
   // Deep-link: ?session=<id> opens that session detail
   useEffect(() => {
@@ -88,15 +94,29 @@ export default function App() {
       onGoingClick={() => {}}
       onHostHere={(venue) => { setPrefillVenue(venue); setCreating(true); }}
     />
-  ) : tab === "pulse" ? (
+  ) : tab === "wishlist" ? (
     <PulsePage user={user} />
-  ) : (
+  ) : tab === "profile" ? (
     <ProfilePage
       user={user}
       onSignOut={signOut}
       onToggleLocation={(v) => updateUser({ location_sharing: v })}
     />
+  ) : (
+    // "campus" tab keeps Sessions visible behind the heatmap modal
+    <Sessions user={user} onOpen={setOpenSession} onCreate={() => setCreating(true)} />
   );
+
+  // Helper: tab click handler — Campus opens heatmap modal instead of swapping pages
+  function handleTabClick(next: Tab) {
+    tap();
+    if (next === "campus") {
+      setShowCampusModal(true);
+      return;
+    }
+    setTab(next);
+    setShowCampusModal(false);
+  }
 
   const hideChrome = !!openSession || creating;
 
@@ -116,12 +136,12 @@ export default function App() {
           </div>
 
           <nav className="flex flex-col gap-1">
-            {NAV.map(({ key, label, Icon }) => {
+            {LEFT_NAV.map(({ key, label, Icon }) => {
               const active = tab === key;
               return (
                 <button
                   key={key}
-                  onClick={() => setTab(key)}
+                  onClick={() => handleTabClick(key)}
                   className="flex items-center gap-3 px-3 py-2.5 rounded-[10px] text-left transition-colors"
                   style={{
                     background: active ? COLOR.navyTint : "transparent",
@@ -138,6 +158,15 @@ export default function App() {
                 </button>
               );
             })}
+            {/* Post a session — desktop CTA */}
+            <button
+              onClick={() => { tap(); setCreating(true); }}
+              className="flex items-center gap-2 px-3 py-2.5 mt-2 rounded-[10px] text-left transition-colors"
+              style={{ background: COLOR.navy, color: "#fff" }}
+            >
+              <Plus size={16} strokeWidth={2.25} />
+              <span className="text-sm" style={{ fontWeight: 700 }}>Post a session</span>
+            </button>
           </nav>
 
           <div className="flex-1" />
@@ -152,43 +181,90 @@ export default function App() {
         {page}
       </main>
 
-      {/* Mobile bottom nav — visible < md only */}
+      {/* Mobile bottom nav — 5 tabs with raised "+" in the middle */}
       {!hideChrome && (
         <nav
-          className="md:hidden fixed bottom-0 left-0 right-0 z-40 pt-2 border-t backdrop-blur-xl"
+          className="md:hidden fixed bottom-0 left-0 right-0 z-40 pt-2.5 border-t"
           style={{
-            background: "rgba(244,242,236,0.96)",
-            borderColor: COLOR.borderLight,
-            paddingBottom: "calc(env(safe-area-inset-bottom) + 10px)",
+            background: COLOR.surface,
+            borderColor: COLOR.border,
+            paddingBottom: "calc(env(safe-area-inset-bottom) + 12px)",
           }}
         >
-          <div className="flex items-center justify-around max-w-md mx-auto px-2">
-            {NAV.map(({ key, label, Icon }) => {
-              const active = tab === key;
+          <div className="flex items-center max-w-md mx-auto px-1">
+            {/* tabs in this order: Pulse | Discover | + | Campus | Profile */}
+            {[
+              { key: "sessions" as Tab, label: "Pulse",    Icon: Calendar },
+              { key: "discover" as Tab, label: "Discover", Icon: Compass },
+              { key: "__post" as const, label: "Post",     Icon: Plus, special: true },
+              { key: "campus"   as Tab, label: "Campus",   Icon: MapPin },
+              { key: "profile"  as Tab, label: "You",      Icon: UserIcon },
+            ].map(({ key, label, Icon, special }) => {
+              const active = tab === key && !showCampusModal;
+              if (special) {
+                return (
+                  <button
+                    key="post"
+                    onClick={() => { tap(); setCreating(true); }}
+                    className="flex-1 flex flex-col items-center gap-0.5 relative"
+                  >
+                    <div
+                      className="flex items-center justify-center"
+                      style={{
+                        width: 42,
+                        height: 42,
+                        borderRadius: 13,
+                        background: COLOR.navy,
+                        marginTop: -18,
+                        boxShadow: "0 4px 16px rgba(28,58,110,0.35)",
+                      }}
+                    >
+                      <Plus size={20} strokeWidth={2.25} color="#fff" />
+                    </div>
+                  </button>
+                );
+              }
+              const isCampus = key === "campus";
+              const visuallyActive = isCampus ? showCampusModal : active;
               return (
                 <button
                   key={key}
-                  onClick={() => setTab(key)}
-                  className="flex flex-col items-center gap-0.5 px-3 py-1.5 relative"
+                  onClick={() => handleTabClick(key as Tab)}
+                  className="flex-1 flex flex-col items-center gap-1 px-1 py-1 relative"
                 >
                   <Icon
                     size={20}
-                    strokeWidth={active ? 2 : 1.75}
-                    color={active ? COLOR.navy : COLOR.ink3}
+                    strokeWidth={visuallyActive ? 2 : 1.6}
+                    color={visuallyActive ? COLOR.navy : COLOR.ink3}
                   />
                   <span
                     className="text-[10px]"
                     style={{
-                      color: active ? COLOR.navy : COLOR.ink3,
-                      fontWeight: active ? 700 : 600,
+                      color: visuallyActive ? COLOR.navy : COLOR.ink3,
+                      fontWeight: 600,
                     }}
                   >
                     {label}
                   </span>
-                  {active && (
+                  {visuallyActive && (
                     <span
                       className="absolute -bottom-0.5 w-1 h-1 rounded-full"
                       style={{ background: COLOR.navy }}
+                    />
+                  )}
+                  {/* Campus tab: live activity dot when people are sharing */}
+                  {isCampus && campusLocations.length > 0 && (
+                    <span
+                      className="absolute"
+                      style={{
+                        top: 2,
+                        right: "30%",
+                        width: 7,
+                        height: 7,
+                        borderRadius: 4,
+                        background: "#16A34A",
+                        border: `1.5px solid ${COLOR.surface}`,
+                      }}
                     />
                   )}
                 </button>
@@ -196,6 +272,14 @@ export default function App() {
             })}
           </div>
         </nav>
+      )}
+
+      {/* Campus map modal — opened from any tab via the Campus button */}
+      {showCampusModal && (
+        <CampusHeatmap
+          locations={campusLocations}
+          onClose={() => setShowCampusModal(false)}
+        />
       )}
 
       {/* Mobile header with LogoMark — shown only when not on nested screens */}

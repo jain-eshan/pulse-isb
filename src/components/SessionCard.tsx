@@ -1,133 +1,186 @@
+/**
+ * SessionCard — Pulse Redesign v2
+ * Date block on the left, content on the right, gradient strip on top.
+ * Matches Pulse Redesign.html EventListCard exactly.
+ */
 import { motion } from "framer-motion";
 import { format, isToday, isTomorrow } from "date-fns";
-import { MapPin, Users } from "lucide-react";
+import { MapPin, Users, Check } from "lucide-react";
 import type { Session } from "../types";
-import { COLOR, INTEREST_COLOR, stripGradient } from "../lib/pulseTheme";
+import { COLOR, FONT } from "../lib/pulseTheme";
+import { coverTheme } from "./CoverBanner";
 import SectionPill from "./SectionPill";
 
 type Props = { session: Session; onClick: () => void };
 
 export default function SessionCard({ session, onClick }: Props) {
   const start = new Date(session.starts_at);
-  const topTag = session.tags[0];
-  const cat = topTag ? INTEREST_COLOR[topTag] : undefined;
-  const strip = cat?.strip ?? COLOR.navy;
-  const tint = cat?.tint ?? COLOR.navyTint;
-  const catLabel = cat?.label ?? "Session";
+  const topTag = session.tags?.[0];
+  const theme = coverTheme(topTag);
 
   const going = session.rsvp_counts?.going ?? 0;
-  const mine = session.my_rsvp;
+  const isGoing = session.my_rsvp === "going";
 
-  const dayLabel = isToday(start)
-    ? "Today"
-    : isTomorrow(start)
-    ? "Tomorrow"
-    : format(start, "EEE d MMM");
+  // Date label — "Today / Tom / Wed" + day number + time
+  const today = isToday(start);
+  const tomorrow = isTomorrow(start);
+  const dayLabel = today ? "Today" : tomorrow ? "Tom" : format(start, "EEE");
+  const dayNum = format(start, "d");
+  const timeLabel = format(start, "h:mm a");
 
   return (
     <motion.button
       onClick={onClick}
       whileTap={{ scale: 0.985 }}
       className="card card-hover text-left w-full"
+      style={{ overflow: "hidden", padding: 0 }}
     >
-      {/* Category strip */}
+      {/* Top gradient strip (3px) */}
       <div
         style={{
-          height: 2,
-          background: stripGradient(strip, tint),
+          height: 3,
+          background: `linear-gradient(90deg, ${theme.strip}, ${theme.from}50)`,
         }}
       />
 
-      <div className="px-5 pt-4 pb-5">
-        {/* Cat label + time */}
-        <div className="flex items-center justify-between mb-2">
+      <div
+        style={{
+          padding: "12px 14px 14px",
+          display: "flex",
+          gap: 12,
+          alignItems: "flex-start",
+        }}
+      >
+        {/* Date block (left) */}
+        <div
+          style={{
+            width: 48,
+            flexShrink: 0,
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            paddingTop: 2,
+          }}
+        >
           <span
-            className="t-label"
-            style={{ color: strip, letterSpacing: "0.1em" }}
+            style={{
+              fontSize: 9,
+              fontWeight: 800,
+              color: theme.strip,
+              textTransform: "uppercase",
+              letterSpacing: "0.08em",
+              fontFamily: FONT.sans,
+            }}
           >
-            {catLabel} · {session.venue?.split(",")[0] ?? "ISB Mohali"}
+            {dayLabel}
           </span>
-          <span className="t-meta">
-            {dayLabel} · {format(start, "h:mm a")}
+          <span
+            style={{
+              fontFamily: FONT.serif,
+              fontSize: 28,
+              fontWeight: 500,
+              color: COLOR.ink,
+              lineHeight: 1.1,
+            }}
+          >
+            {dayNum}
+          </span>
+          <span
+            style={{
+              fontSize: 9,
+              color: COLOR.ink3,
+              fontWeight: 600,
+              fontFamily: FONT.sans,
+            }}
+          >
+            {timeLabel}
           </span>
         </div>
 
-        {/* Title */}
-        <h3 className="t-card-title mb-1">{session.title}</h3>
-
-        {/* Host + section pill */}
-        {session.creator && (
-          <div className="flex items-center gap-2 mb-2">
-            <span className="t-meta" style={{ color: COLOR.ink2 }}>
-              by {session.creator.name?.split(" ")[0] ?? "—"}
-            </span>
-            <SectionPill code={session.creator.section} size="sm" />
-          </div>
-        )}
-
-        {/* Short description */}
-        {session.description && (
-          <p
-            className="t-body mb-3"
+        {/* Content (right) */}
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <h3
             style={{
+              fontSize: 14,
+              fontWeight: 700,
+              color: COLOR.ink,
+              lineHeight: 1.3,
+              marginBottom: 4,
+              fontFamily: FONT.sans,
               display: "-webkit-box",
               WebkitLineClamp: 2,
               WebkitBoxOrient: "vertical",
               overflow: "hidden",
-              fontSize: 13,
-              lineHeight: 1.6,
             }}
           >
-            {session.description}
-          </p>
-        )}
+            {session.title}
+          </h3>
 
-        {/* Meta row */}
-        <div
-          className="flex items-center gap-4 pt-3 mt-1 border-t"
-          style={{ borderColor: COLOR.divider }}
-        >
-          {session.venue && (
-            <span
-              className="flex items-center gap-1.5 t-meta"
-              style={{ color: COLOR.ink2 }}
-            >
-              <MapPin size={13} strokeWidth={1.75} />
-              {session.venue}
-            </span>
+          {/* Host + section pill */}
+          {session.creator && (
+            <div className="flex items-center gap-1.5 mb-1.5">
+              <span style={{ fontSize: 11, color: COLOR.ink2, fontFamily: FONT.sans }}>
+                by {session.creator.name?.split(" ")[0] ?? "—"}
+              </span>
+              <SectionPill code={session.creator.section} size="sm" />
+            </div>
           )}
-          <span
-            className="flex items-center gap-1.5 t-meta"
-            style={{ color: COLOR.ink2 }}
-          >
-            <Users size={13} strokeWidth={1.75} />
-            {going} going
-          </span>
 
-          <span className="flex-1" />
-
-          {mine === "going" && (
-            <span
-              className="text-xs font-semibold px-2.5 py-1 rounded-full"
-              style={{
-                background: COLOR.navyTint,
-                color: COLOR.navy,
-              }}
-            >
-              You're in
-            </span>
-          )}
-          {mine === "maybe" && (
-            <span
-              className="text-xs font-semibold px-2.5 py-1 rounded-full"
-              style={{
-                background: COLOR.amberTint,
-                color: COLOR.amber,
-              }}
-            >
-              Maybe
-            </span>
-          )}
+          {/* Bottom row: venue + going / "Going" */}
+          <div className="flex items-center gap-2">
+            {session.venue && (
+              <span
+                style={{
+                  fontSize: 11,
+                  color: COLOR.ink3,
+                  fontFamily: FONT.sans,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 3,
+                  minWidth: 0,
+                }}
+                className="truncate"
+              >
+                <MapPin size={11} strokeWidth={1.75} />
+                <span className="truncate">{session.venue.split(",")[0]}</span>
+              </span>
+            )}
+            <span style={{ flex: 1 }} />
+            {isGoing ? (
+              <span
+                style={{
+                  fontSize: 11,
+                  fontWeight: 700,
+                  color: "#15803D",
+                  background: "#DCFCE7",
+                  padding: "3px 9px",
+                  borderRadius: 99,
+                  fontFamily: FONT.sans,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 4,
+                  flexShrink: 0,
+                }}
+              >
+                <Check size={11} strokeWidth={2.5} /> Going
+              </span>
+            ) : (
+              <span
+                style={{
+                  fontSize: 11,
+                  fontWeight: 600,
+                  color: COLOR.ink2,
+                  fontFamily: FONT.sans,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 4,
+                  flexShrink: 0,
+                }}
+              >
+                <Users size={11} strokeWidth={1.75} /> {going}
+              </span>
+            )}
+          </div>
         </div>
       </div>
     </motion.button>

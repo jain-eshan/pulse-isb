@@ -1,98 +1,134 @@
-import { sectionByCode } from "../lib/sections";
-import { INTERESTS } from "../types";
+/**
+ * CoverBanner — Pulse Redesign v2
+ * Deep-tone gradient + dot grid + diagonal SVG accents + glass pill.
+ * Matches the design system handoff (Pulse Redesign.html).
+ */
+import { FONT } from "../lib/pulseTheme";
 
 interface Props {
   title: string;
   tag?: string;
-  hostSection?: string;
   height?: number;
+  /** Show the category pill in the top-left corner */
+  showPill?: boolean;
+  /** Show a dark scrim under the title (used on detail screens) */
+  scrim?: boolean;
+  children?: React.ReactNode;
 }
 
-// Tag → color theme (gradient + accent)
-const TAG_THEME: Record<string, { from: string; to: string; accent: string; emoji: string }> = {
-  product:    { from: "#FFE4B5", to: "#FFB347", accent: "#D4621A", emoji: "💡" },
-  consulting: { from: "#DBEAFE", to: "#93C5FD", accent: "#1E3A8A", emoji: "📊" },
-  tech:       { from: "#D1FAE5", to: "#6EE7B7", accent: "#065F46", emoji: "🤖" },
-  careers:    { from: "#EDE9FE", to: "#C4B5FD", accent: "#5B21B6", emoji: "🎯" },
-  academics:  { from: "#CFFAFE", to: "#67E8F9", accent: "#155E75", emoji: "📚" },
-  social:     { from: "#FCE7F3", to: "#F9A8D4", accent: "#9D174D", emoji: "🎭" },
+// Tag → cover theme. Matches Pulse Redesign.html COVER_THEMES.
+export const COVER_THEMES: Record<
+  string,
+  { from: string; to: string; strip: string; label: string }
+> = {
+  consulting: { from: "#1C3A6E", to: "#2D5016", strip: "#D4621A", label: "Consulting" },
+  product:    { from: "#312E81", to: "#4C1D95", strip: "#4A3ADB", label: "Product" },
+  tech:       { from: "#0C1A3A", to: "#1C3A6E", strip: "#1C3A6E", label: "Tech" },
+  careers:    { from: "#4C1D95", to: "#5B2D8E", strip: "#5B2D8E", label: "Careers" },
+  academics:  { from: "#064E3B", to: "#065F46", strip: "#1A7A4A", label: "Academics" },
+  social:     { from: "#7C0A2A", to: "#C41E3A", strip: "#C47D0E", label: "Social" },
 };
 
-export default function CoverBanner({ title, tag, hostSection, height = 220 }: Props) {
-  const theme = tag ? TAG_THEME[tag] ?? null : null;
-  const sec = sectionByCode(hostSection);
-  const interest = tag ? INTERESTS.find((i) => i.id === tag) : null;
+export function coverTheme(tag?: string) {
+  return (tag && COVER_THEMES[tag]) || COVER_THEMES.consulting;
+}
 
-  // Resolve gradient — prefer tag theme, fall back to section tint, then default cream
-  const from = theme?.from ?? sec?.tint ?? "#F0E9DA";
-  const to = theme?.to ?? sec?.color ?? "#1C3A6E";
-  const accent = theme?.accent ?? sec?.color ?? "#1C3A6E";
-  const emoji = theme?.emoji ?? interest?.emoji ?? "✨";
+export default function CoverBanner({
+  title,
+  tag,
+  height = 240,
+  showPill = true,
+  scrim = false,
+  children,
+}: Props) {
+  const theme = coverTheme(tag);
 
   return (
     <div
-      className="relative rounded-[20px] overflow-hidden mx-4 md:mx-8 mt-2"
       style={{
         height,
-        background: `linear-gradient(135deg, ${from} 0%, ${to} 100%)`,
-        boxShadow: "0 12px 40px rgba(0,0,0,0.10)",
+        position: "relative",
+        overflow: "hidden",
+        background: `linear-gradient(150deg, ${theme.from} 0%, ${theme.to} 100%)`,
       }}
     >
-      {/* Subtle dot pattern overlay */}
+      {/* Subtle dot grid */}
       <div
-        className="absolute inset-0 opacity-30 pointer-events-none"
         style={{
-          backgroundImage: `radial-gradient(circle at 1px 1px, rgba(255,255,255,0.4) 1px, transparent 0)`,
-          backgroundSize: "20px 20px",
+          position: "absolute",
+          inset: 0,
+          opacity: 0.12,
+          pointerEvents: "none",
+          backgroundImage:
+            "radial-gradient(circle at 1px 1px, rgba(255,255,255,0.7) 1px, transparent 0)",
+          backgroundSize: "24px 24px",
         }}
       />
 
-      {/* Decorative giant emoji in corner */}
-      <div
-        className="absolute -right-6 -bottom-6 select-none pointer-events-none"
-        style={{
-          fontSize: 200,
-          lineHeight: 1,
-          opacity: 0.18,
-          transform: "rotate(-8deg)",
-        }}
+      {/* Diagonal line accents (decorative) */}
+      <svg
+        style={{ position: "absolute", inset: 0, width: "100%", height: "100%", opacity: 0.07 }}
+        viewBox="0 0 100 100"
+        preserveAspectRatio="none"
       >
-        {emoji}
-      </div>
+        <line x1="60" y1="0" x2="110" y2="100" stroke="#fff" strokeWidth="12" />
+        <line x1="80" y1="0" x2="130" y2="100" stroke="#fff" strokeWidth="6" />
+      </svg>
 
-      {/* Tag pill (top left) */}
-      {interest && (
-        <div className="absolute top-4 left-4">
+      {/* Category pill (glassmorphism) */}
+      {showPill && (
+        <div style={{ position: "absolute", top: 14, left: 16 }}>
           <span
-            className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider"
             style={{
-              background: "rgba(255,255,255,0.92)",
-              color: accent,
-              backdropFilter: "blur(6px)",
+              display: "inline-block",
+              background: "rgba(255,255,255,0.15)",
+              backdropFilter: "blur(8px)",
+              border: "1px solid rgba(255,255,255,0.22)",
+              borderRadius: 99,
+              padding: "4px 12px",
+              fontSize: 11,
+              fontWeight: 700,
+              color: "#fff",
+              letterSpacing: "0.08em",
+              textTransform: "uppercase",
+              fontFamily: FONT.sans,
             }}
           >
-            <span>{interest.emoji}</span>
-            {interest.label}
+            {theme.label}
           </span>
         </div>
       )}
 
-      {/* Title overlay */}
-      <div className="absolute bottom-5 left-5 right-20">
-        <h1
-          className="font-serif"
+      {/* Title with optional dark scrim */}
+      {title && (
+        <div
           style={{
-            fontSize: "clamp(22px, 6vw, 38px)",
-            lineHeight: 1.05,
-            color: "#0F172A",
-            letterSpacing: "-0.01em",
-            textShadow: "0 1px 0 rgba(255,255,255,0.5)",
-            fontWeight: 500,
+            position: "absolute",
+            bottom: 0,
+            left: 0,
+            right: 0,
+            padding: scrim ? "48px 20px 18px" : "0 18px 18px",
+            background: scrim
+              ? "linear-gradient(to top, rgba(0,0,0,0.55) 0%, transparent 100%)"
+              : "transparent",
           }}
         >
-          {title}
-        </h1>
-      </div>
+          <h1
+            style={{
+              fontFamily: FONT.serif,
+              fontSize: scrim ? 22 : 24,
+              fontWeight: 500,
+              color: "#fff",
+              lineHeight: 1.15,
+              textShadow: "0 1px 8px rgba(0,0,0,0.25)",
+            }}
+          >
+            {title}
+          </h1>
+        </div>
+      )}
+
+      {children}
     </div>
   );
 }
