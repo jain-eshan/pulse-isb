@@ -200,7 +200,7 @@ const BOUNDS = {
     [76.72609882608003, 30.669307738458343],
     [76.7259107446061, 30.669307738458343],
   ],
-} as const;
+};
 
 /** Compute centroid from polygon coords [lng, lat][] */
 function centroid(coords: readonly (readonly number[])[]): { lat: number; lng: number } {
