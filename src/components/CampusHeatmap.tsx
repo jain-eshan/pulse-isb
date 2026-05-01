@@ -98,6 +98,7 @@ export default function CampusHeatmap({
     )
       ? 1
       : 0);
+  const rsvpCount = locations.filter((l) => l.source === "rsvp").length;
 
   // ─── 1. Initialise the Leaflet map once on mount ────────────────────
   useEffect(() => {
@@ -211,11 +212,18 @@ export default function CampusHeatmap({
     otherMarkersRef.current = [];
 
     for (const loc of otherLocations) {
-      const dotHtml = `<div style="
-        width: 8px; height: 8px; border-radius: 50%;
-        background: rgba(28,58,110,0.55); border: 1.5px solid #fff;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.2);
-      "></div>`;
+      const isRsvp = loc.source === "rsvp";
+      const dotHtml = isRsvp
+        ? `<div style="
+            width: 8px; height: 8px; border-radius: 50%;
+            background: rgba(79,110,247,0.35); border: 1.5px dashed rgba(79,110,247,0.5);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+          "></div>`
+        : `<div style="
+            width: 8px; height: 8px; border-radius: 50%;
+            background: rgba(28,58,110,0.55); border: 1.5px solid #fff;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+          "></div>`;
       const marker = L.marker([loc.lat, loc.lng], {
         icon: L.divIcon({
           html: dotHtml,
@@ -398,7 +406,7 @@ export default function CampusHeatmap({
                 fontFamily: FONT.sans,
               }}
             >
-              {totalActive} active
+              {totalActive} around{rsvpCount > 0 ? ` · ${rsvpCount} expected` : ""}
             </span>
           </div>
 
@@ -631,10 +639,10 @@ export default function CampusHeatmap({
                   }}
                 >
                   {selectedCount === 0
-                    ? "no one nearby"
+                    ? "no one around"
                     : `${selectedCount} ${
                         selectedCount === 1 ? "person" : "people"
-                      } nearby`}
+                      } around`}
                 </span>
               </div>
             </div>

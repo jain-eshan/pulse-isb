@@ -133,12 +133,10 @@ export function useLocationBroadcast(user: User | null): LocationState {
         navigator.geolocation.clearWatch(watchIdRef.current);
         watchIdRef.current = null;
       }
-      // Best-effort cleanup of the row when the user toggles off / signs out.
-      if (user && !IS_DEMO) {
-        import("../lib/supabase").then(({ supabase }) =>
-          supabase.from("user_locations").delete().eq("user_id", user.id)
-        );
-      }
+      // Don't delete location on tab close — let it go stale gracefully.
+      // The useCampusActivity hook filters to last 15 minutes, so old
+      // entries fade out naturally. This way closing the tab still leaves
+      // the user on the heatmap for a while.
     };
   }, [user?.id, user?.location_sharing]);
 
