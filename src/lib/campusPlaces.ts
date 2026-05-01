@@ -8,7 +8,7 @@
 import booleanPointInPolygon from "@turf/boolean-point-in-polygon";
 import { point, polygon as turfPolygon } from "@turf/helpers";
 
-export type ZoneCategory = "academic" | "sports" | "dining" | "housing" | "amenity" | "gate";
+export type ZoneCategory = "academic" | "sports" | "dining" | "housing" | "amenity";
 
 export interface CampusPlace {
   id: string;
@@ -214,15 +214,12 @@ function centroid(coords: readonly (readonly number[])[]): { lat: number; lng: n
 // ── Places array ─────────────────────────────────────────────────────
 
 export const CAMPUS_PLACES: CampusPlace[] = [
-  { id: "main-gate",  num: 1,  label: "Main Gate",             short: "Gate",     category: "gate",     icon: "🚪", lat: 30.669760, lng: 76.728295 },
   { id: "pools",      num: 24, label: "Swimming Pools",        short: "Pool",     category: "sports",   icon: "🏊", ...centroid(BOUNDS.pools),       boundary: [...BOUNDS.pools] },
-  { id: "wellness",   num: 25, label: "Wellness Centre",       short: "Wellness", category: "amenity",  icon: "🧘", lat: 30.667991, lng: 76.725318 },
   { id: "recreation", num: 26, label: "Recreation Centre/Gym", short: "Rec",      category: "amenity",  icon: "🏋️", ...centroid(BOUNDS.recreation), boundary: [...BOUNDS.recreation], priority: true },
   { id: "admin",      num: 8,  label: "Admin Square",          short: "Admin",    category: "academic", icon: "🏛️", ...centroid(BOUNDS.admin),       boundary: [...BOUNDS.admin] },
   { id: "circle",     num: 9,  label: "Circle (VC/CCO)",       short: "Circle",   category: "academic", icon: "⭕", ...centroid(BOUNDS.circle),      boundary: [...BOUNDS.circle] },
   { id: "academic",   num: 11, label: "Academic Square",       short: "Acad",     category: "academic", icon: "📚", ...centroid(BOUNDS.academic),    boundary: [...BOUNDS.academic], priority: true },
   { id: "auditorium", num: 12, label: "Godrej Auditorium",     short: "Audi",     category: "academic", icon: "🎤", ...centroid(BOUNDS.auditorium),  boundary: [...BOUNDS.auditorium] },
-  { id: "jujus",      num: 15, label: "Café Juju's",           short: "Juju's",   category: "dining",   icon: "☕", lat: 30.668813, lng: 76.725554, priority: true },
   { id: "sdr",        num: 16, label: "Savorav (SDR)",         short: "SDR",      category: "dining",   icon: "🍜", ...centroid(BOUNDS.sdr),         boundary: [...BOUNDS.sdr], priority: true },
   { id: "basketball", num: 28, label: "Basketball Court",      short: "BBall",    category: "sports",   icon: "🏀", ...centroid(BOUNDS.basketball),  boundary: [...BOUNDS.basketball], priority: true },
   { id: "football",   num: 27, label: "Football Ground",       short: "Football", category: "sports",   icon: "⚽", ...centroid(BOUNDS.football),    boundary: [...BOUNDS.football], priority: true },
@@ -230,8 +227,6 @@ export const CAMPUS_PLACES: CampusPlace[] = [
   { id: "pickle",     num: 30, label: "Pickleball Court",      short: "Pickle",   category: "sports",   icon: "🏓", ...centroid(BOUNDS.pickle),      boundary: [...BOUNDS.pickle] },
   { id: "sv1b",       num: 35, label: "SV-1B",                 short: "SV-1B",    category: "housing",  icon: "🏠", ...centroid(BOUNDS.sv1b),        boundary: [...BOUNDS.sv1b], priority: true },
   { id: "sv1a",       num: 33, label: "SV-1A",                 short: "SV-1A",    category: "housing",  icon: "🏠", ...centroid(BOUNDS.sv1a),        boundary: [...BOUNDS.sv1a], priority: true },
-  { id: "eh1",        num: 36, label: "Executive Sq EH-1",     short: "EH-1",     category: "housing",  icon: "🏢", lat: 30.668487, lng: 76.724164 },
-  { id: "eh2",        num: 38, label: "Executive Sq EH-2",     short: "EH-2",     category: "housing",  icon: "🏢", lat: 30.668743, lng: 76.724228 },
   { id: "sv2b",       num: 39, label: "SV-2B",                 short: "SV-2B",    category: "housing",  icon: "🏠", ...centroid(BOUNDS.sv2b),        boundary: [...BOUNDS.sv2b], priority: true },
   { id: "gazebo",     num: 41, label: "Gazebo",                short: "Gazebo",   category: "amenity",  icon: "🌿", ...centroid(BOUNDS.gazebo),      boundary: [...BOUNDS.gazebo] },
 ];
@@ -310,5 +305,4 @@ export const CATEGORY_STYLE: Record<ZoneCategory, { tint: string; ink: string; e
   sports:   { tint: "#E8F8EF", ink: "#1A7A4A", emoji: "⚽" },
   housing:  { tint: "#F4E8F2", ink: "#6B2C5A", emoji: "🏠" },
   amenity:  { tint: "#FDF4E0", ink: "#8B5E00", emoji: "✨" },
-  gate:     { tint: "#F0EAFF", ink: "#5B2D8E", emoji: "🚪" },
 };
