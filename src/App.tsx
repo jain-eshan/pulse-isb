@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import { Calendar, Compass, Lightbulb, MapPin, Plus, User as UserIcon } from "lucide-react";
 import { useAuth } from "./hooks/useAuth";
 import { useLocationBroadcast } from "./hooks/useLocation";
@@ -20,6 +21,23 @@ import type { Session } from "./types";
 
 type Tab = "sessions" | "discover" | "wishlist" | "campus" | "profile";
 
+// Map URL paths → tab keys
+const PATH_TO_TAB: Record<string, Tab> = {
+  "/":          "sessions",
+  "/discover":  "discover",
+  "/wishlist":  "wishlist",
+  "/campus":    "campus",
+  "/profile":   "profile",
+};
+
+const TAB_TO_PATH: Record<Tab, string> = {
+  sessions: "/",
+  discover: "/discover",
+  wishlist: "/wishlist",
+  campus:   "/campus",
+  profile:  "/profile",
+};
+
 const LEFT_NAV: { key: Tab; label: string; Icon: React.ComponentType<{ size?: number; strokeWidth?: number; color?: string }> }[] = [
   { key: "sessions", label: "Pulse",    Icon: Calendar },
   { key: "discover", label: "Discover", Icon: Compass },
@@ -32,16 +50,30 @@ export default function App() {
   const { user, loading, signOut, updateUser } = useAuth();
   const myLocationState = useLocationBroadcast(user);
   const { locations: campusLocations } = useCampusActivity();
-  const [tab, setTab] = useState<Tab>("sessions");
+  const navigate = useNavigate();
+  const location = useLocation();
+
   const [openSession, setOpenSession] = useState<Session | null>(null);
   const [creating, setCreating] = useState(false);
   const [prefillVenue, setPrefillVenue] = useState<string | undefined>();
   const [showCampusModal, setShowCampusModal] = useState(false);
 
+  // Derive active tab from URL
+  const tab: Tab = PATH_TO_TAB[location.pathname] ?? "sessions";
+
+  // Sync campus modal with /campus route
+  useEffect(() => {
+    if (location.pathname === "/campus") {
+      setShowCampusModal(true);
+    } else {
+      setShowCampusModal(false);
+    }
+  }, [location.pathname]);
+
   // Deep-link: ?session=<id> opens that session detail
   useEffect(() => {
     if (!user) return;
-    const params = new URLSearchParams(window.location.search);
+    const params = new URLSearchParams(location.search);
     const sid = params.get("session");
     if (!sid) return;
     (async () => {
@@ -52,9 +84,9 @@ export default function App() {
         .maybeSingle();
       if (data) setOpenSession(data as unknown as Session);
       // Clean URL so refresh doesn't loop
-      window.history.replaceState({}, "", window.location.pathname);
+      navigate("/", { replace: true });
     })();
-  }, [user]);
+  }, [user, location.search]);
 
   if (loading) {
     return (
@@ -85,7 +117,11 @@ export default function App() {
       onBack={() => setOpenSession(null)}
     />
   ) : creating ? (
-    <SessionNew user={user} prefillVenue={prefillVenue} onDone={() => { setCreating(false); setPrefillVenue(undefined); }} />
+    <SessionNew
+      user={user}
+      prefillVenue={prefillVenue}
+      onDone={() => { setCreating(false); setPrefillVenue(undefined); }}
+    />
   ) : tab === "sessions" ? (
     <Sessions user={user} onOpen={setOpenSession} onCreate={() => setCreating(true)} />
   ) : tab === "discover" ? (
@@ -103,19 +139,18 @@ export default function App() {
       onToggleLocation={(v) => updateUser({ location_sharing: v })}
     />
   ) : (
-    // "campus" tab keeps Sessions visible behind the heatmap modal
+    // "campus" — show Sessions behind the modal
     <Sessions user={user} onOpen={setOpenSession} onCreate={() => setCreating(true)} />
   );
 
-  // Helper: tab click handler — Campus opens heatmap modal instead of swapping pages
+  // Tab click: campus opens modal, others navigate
   function handleTabClick(next: Tab) {
     tap();
     if (next === "campus") {
-      setShowCampusModal(true);
+      navigate("/campus");
       return;
     }
-    setTab(next);
-    setShowCampusModal(false);
+    navigate(TAB_TO_PATH[next]);
   }
 
   const hideChrome = !!openSession || creating;
@@ -125,7 +160,7 @@ export default function App() {
       className="min-h-screen flex"
       style={{ background: COLOR.bg }}
     >
-      {/* Desktop left rail — visible ≥ md */}
+      {/* Desktop left rail */}
       {!hideChrome && (
         <aside
           className="hidden md:flex flex-col w-56 lg:w-60 border-r py-8 px-5 sticky top-0 h-screen"
@@ -137,7 +172,7 @@ export default function App() {
 
           <nav className="flex flex-col gap-1">
             {LEFT_NAV.map(({ key, label, Icon }) => {
-              const active = tab === key;
+              const active = key === "campus" ? showCampusModal : (tab === key && !showCampusModal);
               return (
                 <button
                   key={key}
@@ -149,10 +184,7 @@ export default function App() {
                   }}
                 >
                   <Icon size={18} strokeWidth={active ? 2 : 1.75} />
-                  <span
-                    className="text-sm"
-                    style={{ fontWeight: active ? 700 : 500 }}
-                  >
+                  <span className="text-sm" style={{ fontWeight: active ? 700 : 500 }}>
                     {label}
                   </span>
                 </button>
@@ -181,7 +213,7 @@ export default function App() {
         {page}
       </main>
 
-      {/* Mobile bottom nav — 5 tabs with raised "+" in the middle */}
+      {/* Mobile bottom nav */}
       {!hideChrome && (
         <nav
           className="md:hidden fixed bottom-0 left-0 right-0 z-40 pt-2.5 border-t"
@@ -192,15 +224,13 @@ export default function App() {
           }}
         >
           <div className="flex items-center max-w-md mx-auto px-1">
-            {/* tabs in this order: Pulse | Discover | + | Campus | Profile */}
             {[
               { key: "sessions" as Tab, label: "Pulse",    Icon: Calendar },
               { key: "discover" as Tab, label: "Discover", Icon: Compass },
-              { key: "__post" as const, label: "Post",     Icon: Plus, special: true },
+              { key: "__post"   as const, label: "Post",   Icon: Plus, special: true },
               { key: "campus"   as Tab, label: "Campus",   Icon: MapPin },
               { key: "profile"  as Tab, label: "You",      Icon: UserIcon },
             ].map(({ key, label, Icon, special }) => {
-              const active = tab === key && !showCampusModal;
               if (special) {
                 return (
                   <button
@@ -225,7 +255,7 @@ export default function App() {
                 );
               }
               const isCampus = key === "campus";
-              const visuallyActive = isCampus ? showCampusModal : active;
+              const visuallyActive = isCampus ? showCampusModal : (tab === key && !showCampusModal);
               return (
                 <button
                   key={key}
@@ -252,7 +282,6 @@ export default function App() {
                       style={{ background: COLOR.navy }}
                     />
                   )}
-                  {/* Campus tab: live activity dot when people are sharing */}
                   {isCampus && campusLocations.length > 0 && (
                     <span
                       className="absolute"
@@ -274,19 +303,19 @@ export default function App() {
         </nav>
       )}
 
-      {/* Campus map modal — opened from any tab via the Campus button */}
+      {/* Campus map modal */}
       {showCampusModal && (
         <CampusHeatmap
           locations={campusLocations}
           myLocation={myLocationState}
-          onClose={() => setShowCampusModal(false)}
+          onClose={() => navigate(-1)}
           onEnableSharing={() => {
             if (user && !user.location_sharing) updateUser({ location_sharing: true });
           }}
         />
       )}
 
-      {/* Mobile header with LogoMark — shown only when not on nested screens */}
+      {/* Mobile header */}
       {!hideChrome && (
         <header
           className="md:hidden fixed top-0 left-0 right-0 z-30 px-5 py-3 flex items-center border-b"
@@ -300,7 +329,6 @@ export default function App() {
         </header>
       )}
 
-      {/* Spacer for mobile header */}
       {!hideChrome && <div className="md:hidden h-[52px] absolute top-0" />}
     </div>
   );

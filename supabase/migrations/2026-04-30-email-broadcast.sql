@@ -1,0 +1,33 @@
+-- Email broadcast support
+-- The email-broadcast and email-reminders edge functions use the existing
+-- bot_events table to track which sessions have been reminded.
+-- No new tables needed — just documenting the setup.
+
+-- To enable the reminder cron, run this in the Supabase SQL Editor:
+-- (Requires pg_cron extension — enabled by default on Supabase Pro)
+--
+-- select cron.schedule(
+--   'pulse-email-reminders',
+--   '*/30 * * * *',
+--   $$
+--   select net.http_post(
+--     url := current_setting('app.settings.supabase_url') || '/functions/v1/email-reminders',
+--     headers := jsonb_build_object(
+--       'Authorization', 'Bearer ' || current_setting('app.settings.service_role_key'),
+--       'Content-Type', 'application/json'
+--     ),
+--     body := '{}'::jsonb
+--   );
+--   $$
+-- );
+--
+-- Alternative: Use an external cron service (cron-job.org, Railway cron)
+-- to POST to /functions/v1/email-reminders every 30 minutes.
+--
+-- Required Supabase Edge Function secrets:
+--   RESEND_API_KEY  — Get from resend.com (free tier: 100 emails/day)
+--   FROM_EMAIL      — e.g. "Pulse ISB <pulse@eshanjain.in>"
+--   APP_URL         — e.g. "https://pulse-isb.vercel.app"
+
+-- No schema changes needed.
+select 1;

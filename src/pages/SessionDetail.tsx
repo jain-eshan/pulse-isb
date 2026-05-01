@@ -36,6 +36,13 @@ interface Attendee {
 
 type Props = { session: Session; user: User; onBack: () => void };
 
+/** Detect if a venue string is actually an online meeting link. */
+function isOnlineLink(venue?: string): boolean {
+  if (!venue) return false;
+  const v = venue.toLowerCase();
+  return v.includes("zoom.us") || v.includes("meet.google.com") || v.includes("teams.microsoft.com") || v.startsWith("http");
+}
+
 export default function SessionDetail({ session, user, onBack }: Props) {
   const { rsvp } = useSessions(user);
   const [attendees, setAttendees] = useState<Attendee[]>([]);
@@ -55,13 +62,22 @@ export default function SessionDetail({ session, user, onBack }: Props) {
   const time = format(startsAt, "h:mm a");
 
   const sessionUrl = `${window.location.origin}/?session=${session.id}`;
+  // Build a richer calendar description with host, attendee count, and link
+  const calDesc = [
+    session.description,
+    session.creator ? `Hosted by ${session.creator.name}` : null,
+    goingCount > 0 ? `${goingCount} people going` : null,
+    isOnlineLink(session.venue) ? `Join: ${session.venue}` : null,
+    `RSVP & details: ${sessionUrl}`,
+  ].filter(Boolean).join("\n\n");
+
   const eventForCal = {
     id: session.id,
-    title: session.title,
-    description: session.description,
+    title: `${session.title} — Pulse ISB`,
+    description: calDesc,
     starts_at: session.starts_at,
     ends_at: session.ends_at,
-    venue: session.venue,
+    venue: isOnlineLink(session.venue) ? session.venue : session.venue,
     url: sessionUrl,
   };
 
@@ -96,12 +112,20 @@ export default function SessionDetail({ session, user, onBack }: Props) {
     };
   }, [session.id]);
 
+  const [showCalPrompt, setShowCalPrompt] = useState(false);
+
   async function handleRsvp(status: RsvpStatus) {
     tap();
     setBusy(true);
     try {
       await rsvp(session.id, status);
-      if (status === "going") fireConfetti();
+      if (status === "going") {
+        fireConfetti();
+        // Show "Add to calendar?" prompt after a beat
+        setTimeout(() => setShowCalPrompt(true), 800);
+      } else {
+        setShowCalPrompt(false);
+      }
     } finally {
       setBusy(false);
     }
@@ -109,17 +133,20 @@ export default function SessionDetail({ session, user, onBack }: Props) {
 
   async function handleShareWA() {
     tap();
-    const venueLine = session.venue ? `\n📍 ${session.venue}` : "";
-    const goingLine = goingCount > 0 ? `\n👥 ${goingCount} going` : "";
+    const hostFirst = session.creator?.name?.split(" ")[0] ?? "Someone";
+    const venueLine = session.venue ? `\n📍 ${isOnlineLink(session.venue) ? "Online" : session.venue}` : "";
+    const goingLine = goingCount > 0 ? `\n\n${goingCount} ${goingCount === 1 ? "person" : "people"} already in 🙌` : "";
+    const descSnippet = session.description
+      ? `\n\n_${session.description.slice(0, 120)}${session.description.length > 120 ? "…" : ""}_`
+      : "";
     const text =
+      `Hey folks! *${hostFirst}* is hosting:\n\n` +
       `*${session.title}*\n` +
       `🗓 ${dayLabel} · ${time}` +
       venueLine +
+      descSnippet +
       goingLine +
-      (session.description
-        ? `\n\n${session.description.slice(0, 140)}${session.description.length > 140 ? "…" : ""}`
-        : "") +
-      `\n\nRSVP & add to calendar →\n${sessionUrl}`;
+      `\n\nRSVP here → ${sessionUrl}`;
 
     if (navigator.share) {
       try {
@@ -143,13 +170,19 @@ export default function SessionDetail({ session, user, onBack }: Props) {
     }
   }
 
-  function handleVenueMap() {
+  function handleVenueClick() {
     if (!session.venue) return;
     tap();
-    window.open(
-      `https://maps.google.com/?q=${encodeURIComponent(session.venue + ", ISB Mohali")}`,
-      "_blank"
-    );
+    if (isOnlineLink(session.venue)) {
+      // Open the meeting link directly
+      const url = session.venue.startsWith("http") ? session.venue : `https://${session.venue}`;
+      window.open(url, "_blank");
+    } else {
+      window.open(
+        `https://maps.google.com/?q=${encodeURIComponent(session.venue + ", ISB Mohali")}`,
+        "_blank"
+      );
+    }
   }
 
   return (
@@ -345,13 +378,17 @@ export default function SessionDetail({ session, user, onBack }: Props) {
 
             {/* Venue card */}
             <button
-              onClick={handleVenueMap}
+              onClick={handleVenueClick}
               disabled={!session.venue}
               className="card text-left"
               style={{ padding: 14 }}
             >
               <div style={{ marginBottom: 6 }}>
-                <MapPin size={20} strokeWidth={1.75} style={{ color: COLOR.navy }} />
+                {isOnlineLink(session.venue) ? (
+                  <span style={{ fontSize: 20 }}>💻</span>
+                ) : (
+                  <MapPin size={20} strokeWidth={1.75} style={{ color: COLOR.navy }} />
+                )}
               </div>
               <p
                 style={{
@@ -363,7 +400,9 @@ export default function SessionDetail({ session, user, onBack }: Props) {
                 }}
                 className="line-clamp-1"
               >
-                {session.venue?.split(",")[0] ?? "Venue TBD"}
+                {isOnlineLink(session.venue)
+                  ? "Online Session"
+                  : session.venue?.split(",")[0] ?? "Venue TBD"}
               </p>
               <p
                 style={{
@@ -373,9 +412,11 @@ export default function SessionDetail({ session, user, onBack }: Props) {
                   fontFamily: FONT.sans,
                 }}
               >
-                {session.venue?.includes(",")
-                  ? session.venue.split(",").slice(1).join(",").trim()
-                  : "ISB Mohali"}
+                {isOnlineLink(session.venue)
+                  ? session.venue!.includes("zoom") ? "Zoom" : session.venue!.includes("meet.google") ? "Google Meet" : "Video call"
+                  : session.venue?.includes(",")
+                    ? session.venue.split(",").slice(1).join(",").trim()
+                    : "ISB Mohali"}
               </p>
               {session.venue && (
                 <p
@@ -390,7 +431,7 @@ export default function SessionDetail({ session, user, onBack }: Props) {
                     fontFamily: FONT.sans,
                   }}
                 >
-                  Open Maps <ExternalLink size={9} />
+                  {isOnlineLink(session.venue) ? "Join call" : "Open Maps"} <ExternalLink size={9} />
                 </p>
               )}
             </button>
@@ -600,6 +641,70 @@ export default function SessionDetail({ session, user, onBack }: Props) {
           </div>
         </div>
       </div>
+
+      {/* Calendar prompt — slides in after RSVP going */}
+      {showCalPrompt && myStatus === "going" && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          style={{
+            position: "absolute",
+            bottom: 90,
+            left: 16,
+            right: 16,
+            zIndex: 61,
+            background: COLOR.navyTint,
+            border: `1px solid ${COLOR.navy}22`,
+            borderRadius: 14,
+            padding: "12px 14px",
+            display: "flex",
+            alignItems: "center",
+            gap: 10,
+          }}
+        >
+          <span style={{ fontSize: 20 }}>📅</span>
+          <div style={{ flex: 1 }}>
+            <p style={{ fontSize: 12, fontWeight: 700, color: COLOR.navy, fontFamily: FONT.sans }}>
+              Add to your calendar?
+            </p>
+            <p style={{ fontSize: 11, color: COLOR.ink2, fontFamily: FONT.sans }}>
+              So you don't forget
+            </p>
+          </div>
+          <button
+            onClick={() => { window.open(googleCalendarUrl(eventForCal), "_blank"); setShowCalPrompt(false); }}
+            style={{
+              padding: "7px 14px",
+              borderRadius: 8,
+              background: COLOR.navy,
+              color: "#fff",
+              fontSize: 11,
+              fontWeight: 700,
+              border: "none",
+              cursor: "pointer",
+              fontFamily: FONT.sans,
+            }}
+          >
+            Add
+          </button>
+          <button
+            onClick={() => setShowCalPrompt(false)}
+            style={{
+              padding: "7px 10px",
+              borderRadius: 8,
+              background: "transparent",
+              color: COLOR.ink3,
+              fontSize: 11,
+              fontWeight: 600,
+              border: "none",
+              cursor: "pointer",
+              fontFamily: FONT.sans,
+            }}
+          >
+            Skip
+          </button>
+        </motion.div>
+      )}
 
       {/* Sticky bottom RSVP bar */}
       <div

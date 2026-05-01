@@ -71,6 +71,22 @@ export function useSessions(user: User | null) {
       .single();
     if (error) throw error;
     await refresh();
+
+    // Fire-and-forget: broadcast email to cohort
+    if (data?.id) {
+      fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/email-broadcast`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          },
+          body: JSON.stringify({ session_id: data.id }),
+        }
+      ).catch((e) => console.warn("[email-broadcast] fire-and-forget failed:", e));
+    }
+
     return data as Session;
   }
 
