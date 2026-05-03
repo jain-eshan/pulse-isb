@@ -39,7 +39,7 @@ const TAB_TO_PATH: Record<Tab, string> = {
 };
 
 const LEFT_NAV: { key: Tab; label: string; Icon: React.ComponentType<{ size?: number; strokeWidth?: number; color?: string }> }[] = [
-  { key: "sessions", label: "Pulse",    Icon: Calendar },
+  { key: "sessions", label: "Events",   Icon: Calendar },
   { key: "discover", label: "Discover", Icon: Compass },
   { key: "wishlist", label: "Wishlist", Icon: Lightbulb },
   { key: "campus",   label: "Campus",   Icon: MapPin },
@@ -55,6 +55,7 @@ export default function App() {
 
   const [openSession, setOpenSession] = useState<Session | null>(null);
   const [creating, setCreating] = useState(false);
+  const [editingSession, setEditingSession] = useState<Session | null>(null);
   const [prefillVenue, setPrefillVenue] = useState<string | undefined>();
   const [showCampusModal, setShowCampusModal] = useState(false);
 
@@ -115,12 +116,14 @@ export default function App() {
       session={openSession}
       user={user}
       onBack={() => setOpenSession(null)}
+      onEdit={(s) => { setOpenSession(null); setEditingSession(s); }}
     />
-  ) : creating ? (
+  ) : creating || editingSession ? (
     <SessionNew
       user={user}
       prefillVenue={prefillVenue}
-      onDone={() => { setCreating(false); setPrefillVenue(undefined); }}
+      editSession={editingSession ?? undefined}
+      onDone={() => { setCreating(false); setEditingSession(null); setPrefillVenue(undefined); }}
     />
   ) : tab === "sessions" ? (
     <Sessions user={user} onOpen={setOpenSession} onCreate={() => setCreating(true)} />
@@ -137,6 +140,8 @@ export default function App() {
       user={user}
       onSignOut={signOut}
       onToggleLocation={(v) => updateUser({ location_sharing: v })}
+      onOpenSession={setOpenSession}
+      onEditSession={(s) => setEditingSession(s)}
     />
   ) : (
     // "campus" — show Sessions behind the modal
@@ -197,7 +202,7 @@ export default function App() {
               style={{ background: COLOR.navy, color: "#fff" }}
             >
               <Plus size={16} strokeWidth={2.25} />
-              <span className="text-sm" style={{ fontWeight: 700 }}>Post a session</span>
+              <span className="text-sm" style={{ fontWeight: 700 }}>Create event</span>
             </button>
           </nav>
 
@@ -218,14 +223,16 @@ export default function App() {
         <nav
           className="md:hidden fixed bottom-0 left-0 right-0 z-40 pt-2.5 border-t"
           style={{
-            background: COLOR.surface,
-            borderColor: COLOR.border,
+            background: "rgba(255,255,255,0.92)",
+            backdropFilter: "blur(16px)",
+            WebkitBackdropFilter: "blur(16px)",
+            borderColor: COLOR.borderLight,
             paddingBottom: "calc(env(safe-area-inset-bottom) + 12px)",
           }}
         >
           <div className="flex items-center max-w-md mx-auto px-1">
             {[
-              { key: "sessions" as Tab, label: "Pulse",    Icon: Calendar },
+              { key: "sessions" as Tab, label: "Events",   Icon: Calendar },
               { key: "discover" as Tab, label: "Discover", Icon: Compass },
               { key: "__post"   as const, label: "Post",   Icon: Plus, special: true },
               { key: "campus"   as Tab, label: "Campus",   Icon: MapPin },

@@ -1,29 +1,39 @@
+/**
+ * SessionNew — Create / Edit event form — Luma-inspired redesign v3
+ * Category + subcategory picker, cover preview, clean form styling, edit mode
+ */
 import { useState } from "react";
-import { ArrowLeft, Sparkles, AlertCircle } from "lucide-react";
+import { ArrowLeft, Sparkles, AlertCircle, Image } from "lucide-react";
 import { useSessions } from "../hooks/useSessions";
-import type { User, Interest, Session } from "../types";
+import type { User, Interest, Session, EventCategory } from "../types";
 import { INTERESTS } from "../types";
 import { SECTIONS, sectionByCode, type SectionCode } from "../lib/sections";
-import { COLOR, FONT } from "../lib/pulseTheme";
+import { COLOR, FONT, EVENT_CATEGORIES, SUBCATEGORIES, CATEGORY_COLOR } from "../lib/pulseTheme";
 import { tap } from "../lib/haptics";
-import CoverBanner, { COVER_THEMES } from "../components/CoverBanner";
+import CoverBanner from "../components/CoverBanner";
 
-type Props = { user: User; onDone: () => void; prefillVenue?: string };
+type Props = { user: User; onDone: () => void; prefillVenue?: string; editSession?: Session };
 
-export default function SessionNew({ user, onDone, prefillVenue }: Props) {
+export default function SessionNew({ user, onDone, prefillVenue, editSession }: Props) {
   const { createSession } = useSessions(user);
-  const [mode, setMode] = useState<"paste" | "form">(prefillVenue ? "form" : "paste");
+  const isEdit = !!editSession;
+  const [mode, setMode] = useState<"paste" | "form">(prefillVenue || editSession ? "form" : "paste");
   const [paste, setPaste] = useState("");
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [startsAt, setStartsAt] = useState("");
-  const [venue, setVenue] = useState(prefillVenue ?? "");
-  const [tags, setTags] = useState<Interest[]>([]);
+  const [title, setTitle] = useState(editSession?.title ?? "");
+  const [description, setDescription] = useState(editSession?.description ?? "");
+  const [startsAt, setStartsAt] = useState(editSession?.starts_at ? toLocalDatetime(editSession.starts_at) : "");
+  const [venue, setVenue] = useState(editSession?.venue ?? prefillVenue ?? "");
+  const [tags, setTags] = useState<Interest[]>((editSession?.tags ?? []) as Interest[]);
+  const [category, setCategory] = useState<EventCategory | "">(editSession?.category ?? "");
+  const [subcategory, setSubcategory] = useState(editSession?.subcategory ?? "");
   const [visibility, setVisibility] = useState<"all" | "section" | "ogsg" | "custom">("all");
   const [customSections, setCustomSections] = useState<SectionCode[]>([]);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [parseWarn, setParseWarn] = useState(false);
+
+  const subcategories = category ? SUBCATEGORIES[category] : [];
+  const catColor = category ? CATEGORY_COLOR[category.toLowerCase()] : null;
 
   async function handleParse() {
     if (!paste.trim()) return;
@@ -53,7 +63,6 @@ export default function SessionNew({ user, onDone, prefillVenue }: Props) {
         setTags(parsed.tags.filter((t: string) => INTERESTS.some((i) => i.id === t)) as Interest[]);
       setMode("form");
     } catch {
-      // Parsing failed — drop into manual form with a soft warning (not a hard error)
       setParseWarn(true);
       setMode("form");
     } finally {
@@ -80,6 +89,8 @@ export default function SessionNew({ user, onDone, prefillVenue }: Props) {
         starts_at: new Date(startsAt).toISOString(),
         venue: venue.trim() || undefined,
         tags,
+        category: category || undefined,
+        subcategory: subcategory || undefined,
         visible_to_sections,
         visible_to_ogsgs,
       } as Partial<Session>);
@@ -95,245 +106,356 @@ export default function SessionNew({ user, onDone, prefillVenue }: Props) {
       <header className="px-5 md:px-8 pt-6 max-w-2xl">
         <button
           onClick={() => { tap(); onDone(); }}
-          className="flex items-center gap-1.5 t-meta"
-          style={{ color: COLOR.ink2 }}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 6,
+            fontSize: 13,
+            fontWeight: 600,
+            color: COLOR.ink2,
+            fontFamily: FONT.sans,
+            background: "transparent",
+            border: "none",
+            cursor: "pointer",
+            padding: 0,
+          }}
         >
           <ArrowLeft size={14} /> Back
         </button>
-        <h1 className="t-display mt-5" style={{ fontSize: 32 }}>
-          New <span className="t-italic">session</span>
+        <h1
+          style={{
+            fontFamily: FONT.serif,
+            fontSize: 28,
+            fontWeight: 500,
+            color: COLOR.ink,
+            marginTop: 20,
+            lineHeight: 1.1,
+          }}
+        >
+          {isEdit ? "Edit" : "Create"} <em>event</em>
         </h1>
-        <p className="t-body mt-1">Paste a WhatsApp announcement, or fill it in.</p>
+        <p style={{ fontSize: 14, color: COLOR.ink2, fontFamily: FONT.sans, marginTop: 6 }}>
+          {isEdit ? "Update your event details." : "Paste a WhatsApp message, or fill it in manually."}
+        </p>
       </header>
 
       <main className="px-4 md:px-8 max-w-2xl mt-6 space-y-3">
-        {mode === "paste" && (
-          <div className="card p-6 space-y-4">
-            <label className="t-label block">Paste announcement</label>
+        {/* Paste mode */}
+        {mode === "paste" && !isEdit && (
+          <div className="card" style={{ padding: "24px" }}>
+            <label
+              style={{
+                fontSize: 11,
+                fontWeight: 700,
+                color: COLOR.ink3,
+                letterSpacing: "0.08em",
+                textTransform: "uppercase",
+                fontFamily: FONT.sans,
+                display: "block",
+                marginBottom: 10,
+              }}
+            >
+              Paste announcement
+            </label>
             <textarea
               value={paste}
               onChange={(e) => setPaste(e.target.value)}
-              rows={7}
-              placeholder="e.g. Consulting P2P — tonight at 9PM, LT3. Speakers from Bain & Deloitte. All PGP welcome."
-              className="w-full p-4 rounded-[10px] text-sm resize-none focus:outline-none focus:ring-2"
+              rows={6}
+              placeholder="e.g. Consulting P2P — tonight at 9PM, LT3. Speakers from Bain & Deloitte."
               style={{
+                width: "100%",
+                padding: "14px 16px",
+                borderRadius: 12,
                 border: `1px solid ${COLOR.border}`,
-                background: COLOR.bg,
+                background: COLOR.bgSoft,
                 color: COLOR.ink,
-                fontFamily: "'Plus Jakarta Sans', sans-serif",
+                fontFamily: FONT.sans,
+                fontSize: 14,
                 lineHeight: 1.6,
+                resize: "none",
+                outline: "none",
               }}
             />
             <button
               onClick={handleParse}
               disabled={busy || !paste.trim()}
-              className="btn-primary w-full flex items-center justify-center gap-2"
+              className="btn-primary w-full mt-4"
+              style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}
             >
               <Sparkles size={15} />
-              {busy ? "Reading…" : "Parse with Claude"}
+              {busy ? "Reading..." : "Parse with AI"}
             </button>
             <button
               onClick={() => setMode("form")}
-              className="w-full text-sm t-meta hover:opacity-70"
-              style={{ color: COLOR.ink2 }}
+              style={{
+                width: "100%",
+                marginTop: 12,
+                fontSize: 13,
+                fontWeight: 600,
+                color: COLOR.ink2,
+                fontFamily: FONT.sans,
+                background: "transparent",
+                border: "none",
+                cursor: "pointer",
+              }}
             >
-              Fill in manually →
+              Or fill in manually →
             </button>
           </div>
         )}
 
+        {/* Form mode */}
         {mode === "form" && (
-          <div className="card p-6 space-y-5">
-            {/* Live cover preview — updates as the user types title and picks a category */}
-            <div>
-              <label className="t-label block mb-2">Cover preview</label>
-              <div
-                className="rounded-[14px] overflow-hidden"
-                style={{ boxShadow: "0 4px 16px rgba(0,0,0,0.10)" }}
-              >
+          <div className="space-y-4">
+            {/* Cover preview */}
+            <div className="card" style={{ overflow: "hidden" }}>
+              <div style={{ borderRadius: "16px 16px 0 0", overflow: "hidden" }}>
                 <CoverBanner
-                  title={title || "Your session title"}
-                  tag={tags[0]}
+                  title={title || "Your event title"}
+                  tag={tags[0] || (category?.toLowerCase())}
                   height={140}
-                  showPill={!!tags[0]}
+                  showPill={!!(category || tags[0])}
                 />
               </div>
-              <p
-                className="t-meta mt-2"
-                style={{ fontSize: 11 }}
-              >
-                Pick a category below to set the cover colour. The first one is
-                used as the cover theme.
-              </p>
+              <div style={{ padding: "10px 16px", display: "flex", alignItems: "center", gap: 8 }}>
+                <Image size={14} strokeWidth={1.75} color={COLOR.ink3} />
+                <p style={{ fontSize: 11, color: COLOR.ink3, fontFamily: FONT.sans }}>
+                  Cover image upload coming soon — gradient auto-generated from category
+                </p>
+              </div>
             </div>
 
-            {/* Soft parse warning — not a hard error */}
+            {/* Parse warning */}
             {parseWarn && (
               <div
-                className="flex items-start gap-3 rounded-[10px] px-4 py-3 text-sm"
-                style={{ background: COLOR.amberTint, border: `1px solid ${COLOR.amber}22` }}
+                style={{
+                  display: "flex",
+                  alignItems: "flex-start",
+                  gap: 10,
+                  borderRadius: 12,
+                  padding: "12px 16px",
+                  background: COLOR.amberTint,
+                  border: `1px solid ${COLOR.amber}22`,
+                }}
               >
                 <AlertCircle size={16} strokeWidth={1.75} style={{ color: COLOR.amber, flexShrink: 0, marginTop: 1 }} />
-                <p style={{ color: "#7A5000" }}>
-                  Auto-parse isn't available right now. Fill in the details below — it only takes a moment.
+                <p style={{ fontSize: 13, color: "#7A5000", fontFamily: FONT.sans }}>
+                  Auto-parse isn't available right now. Fill in below.
                 </p>
               </div>
             )}
 
             {err && (
               <div
-                className="rounded-[10px] px-4 py-3 text-sm"
-                style={{ background: "#FEF2F2", border: "1px solid #FECACA", color: "#B91C1C" }}
+                style={{
+                  borderRadius: 12,
+                  padding: "12px 16px",
+                  background: "#FEF2F2",
+                  border: "1px solid #FECACA",
+                  color: "#B91C1C",
+                  fontSize: 13,
+                  fontFamily: FONT.sans,
+                }}
               >
                 {err}
               </div>
             )}
 
-            <Field label="Title">
-              <Input value={title} onChange={setTitle} placeholder="e.g. FADM P2P — Chapter 3" />
-            </Field>
-            <Field label="When">
-              <Input value={startsAt} onChange={setStartsAt} type="datetime-local" />
-            </Field>
-            <Field label="Venue">
-              <Input value={venue} onChange={setVenue} placeholder="LT3, Atrium, Zoom…" />
-            </Field>
-            <Field label="Description">
-              <textarea
-                rows={3}
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                className="w-full px-4 py-3 rounded-[10px] text-sm resize-none focus:outline-none focus:ring-2"
-                placeholder="What's this about? Who's it for?"
-                style={{
-                  border: `1px solid ${COLOR.border}`,
-                  background: COLOR.surface,
-                  color: COLOR.ink,
-                  fontFamily: "'Plus Jakarta Sans', sans-serif",
-                }}
-              />
-            </Field>
-            <Field label="Category">
-              <div className="flex flex-wrap gap-2">
-                {INTERESTS.map((it) => {
-                  const on = tags.includes(it.id);
-                  const isPrimary = tags[0] === it.id;
-                  const theme = COVER_THEMES[it.id];
-                  return (
-                    <button
-                      key={it.id}
-                      onClick={() => {
-                        tap();
-                        setTags((p) => {
-                          if (on) return p.filter((x) => x !== it.id);
-                          // New picks become the primary (first) — drives the cover
-                          return [it.id, ...p.filter((x) => x !== it.id)];
-                        });
-                      }}
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 7,
-                        padding: "7px 12px",
-                        borderRadius: 99,
-                        fontSize: 12,
-                        fontWeight: 700,
-                        background: on ? COLOR.navy : COLOR.surface,
-                        color: on ? "#fff" : COLOR.ink2,
-                        border: `1.5px solid ${on ? COLOR.navy : COLOR.border}`,
-                        cursor: "pointer",
-                        fontFamily: FONT.sans,
-                      }}
-                    >
-                      {/* Colour swatch — matches cover banner gradient */}
-                      {theme && (
-                        <span
-                          style={{
-                            width: 12,
-                            height: 12,
-                            borderRadius: 3,
-                            background: `linear-gradient(135deg, ${theme.from}, ${theme.to})`,
-                            border: `1.5px solid ${on ? "#fff" : COLOR.borderLight}`,
-                            flexShrink: 0,
+            {/* Main form card */}
+            <div className="card" style={{ padding: "20px" }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+                <FormField label="Title">
+                  <FormInput value={title} onChange={setTitle} placeholder="e.g. Football @ Rec Center" />
+                </FormField>
+
+                {/* Category picker */}
+                <FormField label="Category">
+                  <div className="flex flex-wrap gap-2">
+                    {EVENT_CATEGORIES.map((cat) => {
+                      const pal = CATEGORY_COLOR[cat.toLowerCase()];
+                      const isActive = category === cat;
+                      return (
+                        <button
+                          key={cat}
+                          onClick={() => {
+                            tap();
+                            if (isActive) { setCategory(""); setSubcategory(""); }
+                            else { setCategory(cat); setSubcategory(""); }
                           }}
-                        />
-                      )}
-                      {it.label}
-                      {isPrimary && (
-                        <span
                           style={{
-                            fontSize: 9,
-                            fontWeight: 800,
-                            letterSpacing: "0.05em",
-                            opacity: 0.85,
-                            textTransform: "uppercase",
+                            padding: "7px 14px",
+                            borderRadius: 99,
+                            fontSize: 13,
+                            fontWeight: 600,
+                            background: isActive ? pal?.accent ?? COLOR.navy : COLOR.surface,
+                            color: isActive ? "#fff" : COLOR.ink2,
+                            border: `1.5px solid ${isActive ? pal?.accent ?? COLOR.navy : COLOR.border}`,
+                            fontFamily: FONT.sans,
+                            cursor: "pointer",
+                            transition: "all 0.15s",
                           }}
                         >
-                          · cover
-                        </span>
-                      )}
+                          {cat}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </FormField>
+
+                {/* Subcategory picker */}
+                {subcategories.length > 0 && (
+                  <FormField label="Subcategory">
+                    <div className="flex flex-wrap gap-2">
+                      {subcategories.map((sub) => {
+                        const isActive = subcategory === sub;
+                        return (
+                          <button
+                            key={sub}
+                            onClick={() => { tap(); setSubcategory(isActive ? "" : sub); }}
+                            style={{
+                              padding: "5px 12px",
+                              borderRadius: 99,
+                              fontSize: 12,
+                              fontWeight: 500,
+                              background: isActive ? (catColor?.accent ?? COLOR.navy) + "14" : COLOR.bgSoft,
+                              color: isActive ? catColor?.accent ?? COLOR.navy : COLOR.ink2,
+                              border: `1px solid ${isActive ? (catColor?.accent ?? COLOR.navy) + "40" : COLOR.borderLight}`,
+                              fontFamily: FONT.sans,
+                              cursor: "pointer",
+                              transition: "all 0.15s",
+                            }}
+                          >
+                            {sub}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </FormField>
+                )}
+
+                <FormField label="When">
+                  <FormInput value={startsAt} onChange={setStartsAt} type="datetime-local" />
+                </FormField>
+
+                <FormField label="Venue">
+                  <FormInput value={venue} onChange={setVenue} placeholder="Rec Center, LT3, Zoom link..." />
+                </FormField>
+
+                <FormField label="Description">
+                  <textarea
+                    rows={3}
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    placeholder="What's this about? Who's it for?"
+                    style={{
+                      width: "100%",
+                      padding: "12px 14px",
+                      borderRadius: 12,
+                      border: `1px solid ${COLOR.border}`,
+                      background: COLOR.bgSoft,
+                      color: COLOR.ink,
+                      fontFamily: FONT.sans,
+                      fontSize: 14,
+                      lineHeight: 1.6,
+                      resize: "none",
+                      outline: "none",
+                    }}
+                  />
+                </FormField>
+
+                {/* Legacy interest tags — still shown but de-emphasized */}
+                <FormField label="Tags (optional)">
+                  <div className="flex flex-wrap gap-2">
+                    {INTERESTS.map((it) => {
+                      const on = tags.includes(it.id);
+                      return (
+                        <button
+                          key={it.id}
+                          onClick={() => {
+                            tap();
+                            setTags((p) => on ? p.filter((x) => x !== it.id) : [...p, it.id]);
+                          }}
+                          style={{
+                            padding: "5px 12px",
+                            borderRadius: 99,
+                            fontSize: 12,
+                            fontWeight: 600,
+                            background: on ? COLOR.navy : COLOR.surface,
+                            color: on ? "#fff" : COLOR.ink2,
+                            border: `1.5px solid ${on ? COLOR.navy : COLOR.border}`,
+                            fontFamily: FONT.sans,
+                            cursor: "pointer",
+                            transition: "all 0.15s",
+                          }}
+                        >
+                          {it.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </FormField>
+
+                <FormField label="Who can see this?">
+                  <div className="flex flex-wrap gap-2">
+                    <button onClick={() => setVisibility("all")} className="chip" data-active={visibility === "all"}>
+                      Everyone
                     </button>
-                  );
-                })}
-              </div>
-              {tags.length > 1 && (
-                <p
-                  className="t-meta mt-2"
-                  style={{ fontSize: 11 }}
-                >
-                  Tap any selected category again to remove it. Reorder by
-                  re-tapping — the most-recently picked one becomes the cover.
-                </p>
-              )}
-            </Field>
-
-            <Field label="Who can see this?">
-              <div className="flex flex-wrap gap-2">
-                <button onClick={() => setVisibility("all")} className="chip" data-active={visibility === "all"}>
-                  Everyone
-                </button>
-                {user.section && (
-                  <button onClick={() => setVisibility("section")} className="chip" data-active={visibility === "section"}>
-                    Just {sectionByCode(user.section)?.name ?? "my section"}
-                  </button>
-                )}
-                {user.section && user.ogsg && (
-                  <button onClick={() => setVisibility("ogsg")} className="chip" data-active={visibility === "ogsg"}>
-                    My OGSG only
-                  </button>
-                )}
-                <button onClick={() => setVisibility("custom")} className="chip" data-active={visibility === "custom"}>
-                  Custom
-                </button>
-              </div>
-              {visibility === "custom" && (
-                <div className="flex flex-wrap gap-2 mt-3">
-                  {SECTIONS.map((s) => {
-                    const on = customSections.includes(s.code);
-                    return (
-                      <button
-                        key={s.code}
-                        onClick={() =>
-                          setCustomSections((p) => (on ? p.filter((x) => x !== s.code) : [...p, s.code]))
-                        }
-                        className="chip"
-                        data-active={on}
-                      >
-                        {s.name}
+                    {user.section && (
+                      <button onClick={() => setVisibility("section")} className="chip" data-active={visibility === "section"}>
+                        Just {sectionByCode(user.section)?.name ?? "my section"}
                       </button>
-                    );
-                  })}
-                </div>
-              )}
-            </Field>
+                    )}
+                    {user.section && user.ogsg && (
+                      <button onClick={() => setVisibility("ogsg")} className="chip" data-active={visibility === "ogsg"}>
+                        My OGSG only
+                      </button>
+                    )}
+                    <button onClick={() => setVisibility("custom")} className="chip" data-active={visibility === "custom"}>
+                      Custom
+                    </button>
+                  </div>
+                  {visibility === "custom" && (
+                    <div className="flex flex-wrap gap-2 mt-3">
+                      {SECTIONS.map((s) => {
+                        const on = customSections.includes(s.code);
+                        return (
+                          <button
+                            key={s.code}
+                            onClick={() =>
+                              setCustomSections((p) => (on ? p.filter((x) => x !== s.code) : [...p, s.code]))
+                            }
+                            className="chip"
+                            data-active={on}
+                          >
+                            {s.name}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </FormField>
+              </div>
 
-            <div className="flex gap-2 pt-2">
-              <button onClick={() => { setParseWarn(false); setMode("paste"); }} className="btn-ghost">
-                ← Paste instead
-              </button>
-              <button onClick={handleSubmit} disabled={busy} className="btn-primary flex-1">
-                {busy ? "Posting…" : "Post session"}
-              </button>
+              {/* Submit */}
+              <div className="flex gap-2 mt-6">
+                {!isEdit && (
+                  <button
+                    onClick={() => { setParseWarn(false); setMode("paste"); }}
+                    className="btn-ghost"
+                  >
+                    ← Paste
+                  </button>
+                )}
+                <button
+                  onClick={handleSubmit}
+                  disabled={busy}
+                  className="btn-primary flex-1"
+                >
+                  {busy
+                    ? isEdit ? "Saving..." : "Posting..."
+                    : isEdit ? "Save changes" : "Create event"}
+                </button>
+              </div>
             </div>
           </div>
         )}
@@ -342,23 +464,57 @@ export default function SessionNew({ user, onDone, prefillVenue }: Props) {
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+/* ─── Sub-components ─── */
+function FormField({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
-      <label className="t-label block mb-2">{label}</label>
+      <label
+        style={{
+          display: "block",
+          fontSize: 11,
+          fontWeight: 700,
+          color: COLOR.ink3,
+          letterSpacing: "0.08em",
+          textTransform: "uppercase",
+          fontFamily: FONT.sans,
+          marginBottom: 8,
+        }}
+      >
+        {label}
+      </label>
       {children}
     </div>
   );
 }
 
-function Input({ value, onChange, placeholder, type = "text" }: {
-  value: string; onChange: (v: string) => void; placeholder?: string; type?: string;
+function FormInput({
+  value,
+  onChange,
+  placeholder,
+  type = "text",
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+  type?: string;
 }) {
   return (
     <input
-      type={type} value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder}
-      className="w-full px-4 py-3 rounded-[10px] text-sm focus:outline-none focus:ring-2"
-      style={{ border: `1px solid ${COLOR.border}`, background: COLOR.surface, color: COLOR.ink, fontFamily: "'Plus Jakarta Sans', sans-serif" }}
+      type={type}
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      placeholder={placeholder}
+      style={{
+        width: "100%",
+        padding: "12px 14px",
+        borderRadius: 12,
+        border: `1px solid ${COLOR.border}`,
+        background: COLOR.bgSoft,
+        color: COLOR.ink,
+        fontFamily: FONT.sans,
+        fontSize: 14,
+        outline: "none",
+      }}
     />
   );
 }

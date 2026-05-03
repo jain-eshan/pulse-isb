@@ -4,11 +4,15 @@ import { supabase } from "../lib/supabase";
 export interface DBPlace {
   id: string;
   name: string;
-  category: "food" | "cafe" | "nightlife" | "travel";
+  category: string;
   area?: string;
   description?: string;
   budget: "low" | "mid" | "high";
   google_maps_url?: string;
+  image_url?: string;
+  google_rating?: number;
+  review_count?: number;
+  distance_from_campus?: string;
 }
 
 export function usePlaces() {
@@ -19,7 +23,7 @@ export function usePlaces() {
     (async () => {
       const { data, error } = await supabase
         .from("places")
-        .select("id,name,category,area,description,budget,google_maps_url")
+        .select("id,name,category,area,description,budget,google_maps_url,image_url,google_rating,review_count,distance_from_campus")
         .order("created_at", { ascending: false });
       if (error) console.error("[usePlaces]", error);
       setPlaces(data ?? []);

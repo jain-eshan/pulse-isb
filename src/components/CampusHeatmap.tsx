@@ -306,7 +306,7 @@ export default function CampusHeatmap({
           50% { transform: scale(1.6); opacity: 0.05; }
         }
         .leaflet-container {
-          background: #F4F2EC !important;
+          background: #F9FAFB !important;
           font-family: ${FONT.sans};
         }
         .pulse-place-marker { background: transparent; border: none; }

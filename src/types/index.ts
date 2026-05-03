@@ -47,7 +47,19 @@ export interface Place {
   google_maps_url: string;
   image_url?: string;
   distance_from_campus?: string;
+  google_rating?: number;
+  review_count?: number;
   created_at: string;
+}
+
+export interface PlaceReview {
+  id: string;
+  place_id: string;
+  user_id: string;
+  rating: number;          // 1-5 stars
+  comment?: string;
+  created_at: string;
+  user?: Pick<User, "id" | "name" | "avatar_url">;
 }
 
 export interface Going {
@@ -86,6 +98,8 @@ export const INTERESTS: { id: Interest; label: string; emoji: string }[] = [
   { id: "social",     label: "Social",     emoji: "🎭" },
 ];
 
+export type EventCategory = "Sports" | "Social" | "Professional";
+
 export interface Session {
   id: string;
   creator_id: string;
@@ -95,6 +109,9 @@ export interface Session {
   ends_at?: string;
   venue?: string;
   tags: string[];
+  category?: EventCategory;
+  subcategory?: string;
+  cover_image_url?: string;
   wa_event_id?: string;
   wa_group_jid?: string;
   archived: boolean;
@@ -128,6 +145,18 @@ export interface PulseItem {
   vote_count?: number;
   my_vote?: boolean;
 }
+
+// ── ISB Section & OGSG constants ─────────────────────────────
+export const ISB_SECTIONS = [
+  { code: "G", name: "Gladiators" },
+  { code: "H", name: "Heralds" },
+  { code: "I", name: "Imperials" },
+  { code: "J", name: "Jedi" },
+  { code: "K", name: "Knights" },
+  { code: "L", name: "Legends" },
+] as const;
+
+export type SectionCode = (typeof ISB_SECTIONS)[number]["code"];
 
 export type VibeMeterPersona =
   | "Night Owl Explorer"

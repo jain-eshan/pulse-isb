@@ -5,12 +5,23 @@
 @layer base {
   :root {
     font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+    --color-bg: #FFFFFF;
+    --color-bg-soft: #F9FAFB;
+    --color-border: #E5E7EB;
+    --color-border-light: #F3F4F6;
+    --color-navy: #1C3A6E;
+    --color-navy-deep: #122850;
+    --color-ink: #111827;
+    --color-ink2: #6B7280;
+    --color-ink3: #9CA3AF;
+    --radius-card: 16px;
+    --radius-btn: 12px;
   }
   * { box-sizing: border-box; }
   html, body {
     margin: 0;
-    background: #F4F2EC;
-    color: #0F0F0F;
+    background: var(--color-bg);
+    color: var(--color-ink);
     font-family: 'Plus Jakarta Sans', ui-sans-serif, system-ui, -apple-system, sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
@@ -25,29 +36,37 @@
 }
 
 @layer components {
-  .t-display     { font-family: 'Playfair Display', Georgia, serif; font-size: 32px; font-weight: 400; line-height: 1.2; letter-spacing: -0.01em; color: #0F0F0F; }
-  .t-display-lg  { font-family: 'Playfair Display', Georgia, serif; font-size: 44px; font-weight: 400; line-height: 1.1; letter-spacing: -0.02em; color: #0F0F0F; }
-  .t-heading     { font-family: 'Playfair Display', Georgia, serif; font-size: 20px; font-weight: 400; color: #0F0F0F; }
-  .t-card-title  { font-family: 'Playfair Display', Georgia, serif; font-size: 20px; font-weight: 500; color: #0F0F0F; line-height: 1.25; }
-  .t-italic      { font-family: 'Playfair Display', Georgia, serif; font-style: italic; color: #1C3A6E; }
-  .t-label       { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #9E9E9E; }
-  .t-body        { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 14px; font-weight: 400; line-height: 1.65; color: #5A5A5A; }
-  .t-meta        { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 12px; color: #9E9E9E; }
+  /* ── Typography ─────────────────────────────────────────────── */
+  .t-display     { font-family: 'Playfair Display', Georgia, serif; font-size: 32px; font-weight: 400; line-height: 1.2; letter-spacing: -0.01em; color: var(--color-ink); }
+  .t-display-lg  { font-family: 'Playfair Display', Georgia, serif; font-size: 44px; font-weight: 400; line-height: 1.1; letter-spacing: -0.02em; color: var(--color-ink); }
+  .t-heading     { font-family: 'Playfair Display', Georgia, serif; font-size: 20px; font-weight: 400; color: var(--color-ink); }
+  .t-card-title  { font-family: 'Playfair Display', Georgia, serif; font-size: 20px; font-weight: 500; color: var(--color-ink); line-height: 1.25; }
+  .t-italic      { font-family: 'Playfair Display', Georgia, serif; font-style: italic; color: var(--color-navy); }
+  .t-label       { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--color-ink3); }
+  .t-body        { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 14px; font-weight: 400; line-height: 1.65; color: var(--color-ink2); }
+  .t-meta        { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 12px; color: var(--color-ink3); }
 
-  .btn-primary   { background: #1C3A6E; color: #fff; font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 600; font-size: 14px; border-radius: 10px; padding: 12px 22px; box-shadow: 0 4px 16px rgba(28,58,110,.25); transition: background .15s, transform .1s; }
-  .btn-primary:hover:not(:disabled)  { background: #122850; }
+  /* ── Buttons ────────────────────────────────────────────────── */
+  .btn-primary   { background: var(--color-navy); color: #fff; font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 600; font-size: 14px; border-radius: var(--radius-btn); padding: 12px 24px; box-shadow: 0 4px 14px rgba(28,58,110,.20); transition: background .15s, transform .1s; }
+  .btn-primary:hover:not(:disabled)  { background: var(--color-navy-deep); }
   .btn-primary:active:not(:disabled) { transform: scale(0.98); }
-  .btn-primary:disabled              { background: #E2DDD4; color: #9E9E9E; box-shadow: none; cursor: not-allowed; }
+  .btn-primary:disabled              { background: #E5E7EB; color: #9CA3AF; box-shadow: none; cursor: not-allowed; }
 
-  .btn-ghost     { background: #F4F2EC; color: #5A5A5A; border: 1px solid #E2DDD4; font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 600; font-size: 14px; border-radius: 10px; padding: 11px 20px; transition: border-color .15s; }
-  .btn-ghost:hover { border-color: #9E9E9E; }
+  .btn-ghost     { background: var(--color-bg); color: var(--color-ink2); border: 1px solid var(--color-border); font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 600; font-size: 14px; border-radius: var(--radius-btn); padding: 11px 20px; transition: border-color .15s, background .15s; }
+  .btn-ghost:hover { border-color: var(--color-ink3); background: var(--color-bg-soft); }
 
-  .chip          { padding: 7px 16px; border-radius: 9999px; font-size: 13px; font-weight: 600; border: 1px solid #E2DDD4; background: #fff; color: #5A5A5A; transition: all .15s; }
-  .chip[data-active="true"] { background: #1C3A6E; color: #fff; border-color: #1C3A6E; }
+  /* ── Chips / Pills ──────────────────────────────────────────── */
+  .chip          { padding: 7px 16px; border-radius: 9999px; font-size: 13px; font-weight: 600; border: 1px solid var(--color-border); background: var(--color-bg); color: var(--color-ink2); transition: all .15s; cursor: pointer; }
+  .chip:hover    { border-color: var(--color-ink3); }
+  .chip[data-active="true"] { background: var(--color-navy); color: #fff; border-color: var(--color-navy); }
 
-  .card          { background: #fff; border-radius: 14px; border: 1px solid #EBE8E1; box-shadow: 0 1px 2px rgba(0,0,0,.04), 0 4px 16px rgba(0,0,0,.06); overflow: hidden; }
+  /* ── Cards ──────────────────────────────────────────────────── */
+  .card          { background: #fff; border-radius: var(--radius-card); border: 1px solid var(--color-border-light); box-shadow: 0 1px 3px rgba(0,0,0,.06), 0 1px 2px rgba(0,0,0,.04); overflow: hidden; }
   .card-hover    { transition: box-shadow .2s, transform .2s; }
-  .card-hover:hover { box-shadow: 0 2px 4px rgba(0,0,0,.06), 0 8px 28px rgba(0,0,0,.10); transform: translateY(-1px); }
+  .card-hover:hover { box-shadow: 0 4px 6px rgba(0,0,0,.05), 0 10px 20px rgba(0,0,0,.08); transform: translateY(-2px); }
+
+  /* ── Section background ─────────────────────────────────────── */
+  .bg-soft       { background: var(--color-bg-soft); }
 }
 
 @layer utilities {
