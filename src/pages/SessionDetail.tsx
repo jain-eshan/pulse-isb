@@ -168,7 +168,7 @@ export default function SessionDetail({ session, user, onBack, onEdit }: Props) 
   }
 
   return (
-    <div style={{ height: "100vh", position: "relative", background: COLOR.bg }}>
+    <div style={{ height: "100%", position: "relative", background: COLOR.bg, display: "flex", flexDirection: "column" }}>
       {/* Floating back + edit */}
       <div
         style={{
@@ -232,7 +232,7 @@ export default function SessionDetail({ session, user, onBack, onEdit }: Props) 
         )}
       </div>
 
-      <div style={{ height: "100%", overflowY: "auto", paddingBottom: 130 }}>
+      <div style={{ flex: 1, overflowY: "auto", paddingBottom: 16 }}>
         {/* Cover image or gradient */}
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
           {session.cover_image_url ? (
@@ -554,14 +554,11 @@ export default function SessionDetail({ session, user, onBack, onEdit }: Props) 
       {/* Calendar prompt after RSVP */}
       {showCalPrompt && myStatus === "going" && (
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           style={{
-            position: "absolute",
-            bottom: 90,
-            left: 16,
-            right: 16,
-            zIndex: 61,
+            flexShrink: 0,
+            margin: "0 16px",
             background: COLOR.navyTint,
             border: `1px solid ${COLOR.navy}22`,
             borderRadius: 14,
@@ -595,18 +592,15 @@ export default function SessionDetail({ session, user, onBack, onEdit }: Props) 
         </motion.div>
       )}
 
-      {/* Sticky bottom RSVP bar */}
+      {/* RSVP bar — flex item, always visible at bottom */}
       <div
         style={{
-          position: "absolute",
-          bottom: 0,
-          left: 0,
-          right: 0,
+          flexShrink: 0,
           background: "rgba(255,255,255,0.95)",
           backdropFilter: "blur(12px)",
+          WebkitBackdropFilter: "blur(12px)",
           borderTop: `1px solid ${COLOR.borderLight}`,
-          padding: "12px 16px calc(env(safe-area-inset-bottom) + 16px)",
-          zIndex: 60,
+          padding: "12px 16px 16px",
         }}
       >
         {myStatus === "going" ? (

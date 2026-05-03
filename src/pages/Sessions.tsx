@@ -150,23 +150,26 @@ export default function Sessions({ user, onOpen, onCreate }: Props) {
           ))}
         </div>
 
-        {/* Category tabs */}
+        {/* Category tiles — BookMyShow/Zomato style */}
         <div
-          className="mt-4 flex gap-2"
-          style={{ overflowX: "auto", paddingBottom: 2, scrollbarWidth: "none" }}
+          className="mt-4 flex gap-2.5"
+          style={{ overflowX: "auto", paddingBottom: 4, scrollbarWidth: "none" }}
         >
-          <CategoryPill
+          <CategoryTile
             label="All"
+            emoji="✨"
             active={!category}
             color={COLOR.navy}
             onClick={() => { tap(); setCategory(null); setSubcategory(null); }}
           />
           {EVENT_CATEGORIES.map((cat) => {
             const pal = CATEGORY_COLOR[cat.toLowerCase()];
+            const emoji = cat === "Sports" ? "🏅" : cat === "Social" ? "🎉" : "💼";
             return (
-              <CategoryPill
+              <CategoryTile
                 key={cat}
                 label={cat}
+                emoji={emoji}
                 active={category === cat}
                 color={pal?.accent ?? COLOR.navy}
                 onClick={() => {
@@ -452,13 +455,15 @@ function FeaturedCard({ session, onOpen }: { session: Session; onOpen: () => voi
 }
 
 /* ─── Sub-components ─── */
-function CategoryPill({
+function CategoryTile({
   label,
+  emoji,
   active,
   color,
   onClick,
 }: {
   label: string;
+  emoji: string;
   active: boolean;
   color: string;
   onClick: () => void;
@@ -468,19 +473,32 @@ function CategoryPill({
       onClick={onClick}
       style={{
         flexShrink: 0,
-        padding: "7px 16px",
-        borderRadius: 99,
-        fontSize: 13,
-        fontWeight: 600,
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: 5,
+        width: 74,
+        padding: "11px 8px 10px",
+        borderRadius: 14,
         background: active ? color : COLOR.surface,
-        color: active ? "#fff" : COLOR.ink2,
-        border: `1.5px solid ${active ? color : COLOR.border}`,
-        fontFamily: FONT.sans,
+        border: `1.5px solid ${active ? color : COLOR.borderLight}`,
         cursor: "pointer",
         transition: "all 0.15s",
       }}
     >
-      {label}
+      <span style={{ fontSize: 22, lineHeight: 1 }}>{emoji}</span>
+      <span
+        style={{
+          fontSize: 11,
+          fontWeight: 700,
+          color: active ? "#fff" : COLOR.ink2,
+          fontFamily: FONT.sans,
+          lineHeight: 1,
+        }}
+      >
+        {label}
+      </span>
     </button>
   );
 }

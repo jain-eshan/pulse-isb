@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { Calendar, Compass, Lightbulb, MapPin, Plus, User as UserIcon } from "lucide-react";
+import { Calendar, Compass, MapPin, Plus, User as UserIcon } from "lucide-react";
 import { useAuth } from "./hooks/useAuth";
 import { useLocationBroadcast } from "./hooks/useLocation";
 import { useCampusActivity } from "./hooks/useCampusActivity";
@@ -10,7 +10,6 @@ import Onboarding from "./pages/Onboarding";
 import Sessions from "./pages/Sessions";
 import SessionDetail from "./pages/SessionDetail";
 import SessionNew from "./pages/SessionNew";
-import PulsePage from "./pages/PulsePage";
 import Home from "./pages/Home";
 import ProfilePage from "./pages/ProfilePage";
 import CampusHeatmap from "./components/CampusHeatmap";
@@ -19,29 +18,29 @@ import { COLOR } from "./lib/pulseTheme";
 import { tap } from "./lib/haptics";
 import type { Session } from "./types";
 
-type Tab = "sessions" | "discover" | "wishlist" | "campus" | "profile";
+type Tab = "sessions" | "discover" | "campus" | "profile";
 
-// Map URL paths → tab keys
 const PATH_TO_TAB: Record<string, Tab> = {
-  "/":          "sessions",
-  "/discover":  "discover",
-  "/wishlist":  "wishlist",
-  "/campus":    "campus",
-  "/profile":   "profile",
+  "/":         "sessions",
+  "/discover": "discover",
+  "/campus":   "campus",
+  "/profile":  "profile",
 };
 
 const TAB_TO_PATH: Record<Tab, string> = {
   sessions: "/",
   discover: "/discover",
-  wishlist: "/wishlist",
   campus:   "/campus",
   profile:  "/profile",
 };
 
-const LEFT_NAV: { key: Tab; label: string; Icon: React.ComponentType<{ size?: number; strokeWidth?: number; color?: string }> }[] = [
+const LEFT_NAV: {
+  key: Tab;
+  label: string;
+  Icon: React.ComponentType<{ size?: number; strokeWidth?: number; color?: string }>;
+}[] = [
   { key: "sessions", label: "Events",   Icon: Calendar },
   { key: "discover", label: "Discover", Icon: Compass },
-  { key: "wishlist", label: "Wishlist", Icon: Lightbulb },
   { key: "campus",   label: "Campus",   Icon: MapPin },
   { key: "profile",  label: "You",      Icon: UserIcon },
 ];
@@ -57,21 +56,17 @@ export default function App() {
   const [creating, setCreating] = useState(false);
   const [editingSession, setEditingSession] = useState<Session | null>(null);
   const [prefillVenue, setPrefillVenue] = useState<string | undefined>();
-  const [showCampusModal, setShowCampusModal] = useState(false);
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
 
-  // Derive active tab from URL
+  useEffect(() => {
+    const handler = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener("resize", handler);
+    return () => window.removeEventListener("resize", handler);
+  }, []);
+
   const tab: Tab = PATH_TO_TAB[location.pathname] ?? "sessions";
 
-  // Sync campus modal with /campus route
-  useEffect(() => {
-    if (location.pathname === "/campus") {
-      setShowCampusModal(true);
-    } else {
-      setShowCampusModal(false);
-    }
-  }, [location.pathname]);
-
-  // Deep-link: ?session=<id> opens that session detail
+  // Deep-link: ?session=<id>
   useEffect(() => {
     if (!user) return;
     const params = new URLSearchParams(location.search);
@@ -84,7 +79,6 @@ export default function App() {
         .eq("id", sid)
         .maybeSingle();
       if (data) setOpenSession(data as unknown as Session);
-      // Clean URL so refresh doesn't loop
       navigate("/", { replace: true });
     })();
   }, [user, location.search]);
@@ -94,31 +88,19 @@ export default function App() {
       <div className="min-h-screen flex items-center justify-center" style={{ background: COLOR.bg }}>
         <div
           className="w-6 h-6 rounded-full animate-spin"
-          style={{
-            border: `2px solid ${COLOR.border}`,
-            borderTopColor: COLOR.navy,
-          }}
+          style={{ border: `2px solid ${COLOR.border}`, borderTopColor: COLOR.navy }}
         />
       </div>
     );
   }
 
-  if (!user) {
-    return <Login />;
-  }
-
+  if (!user) return <Login />;
   if (!user.onboarded_at) {
     return <Onboarding user={user} onComplete={(updates) => updateUser(updates)} />;
   }
 
-  const page = openSession ? (
-    <SessionDetail
-      session={openSession}
-      user={user}
-      onBack={() => setOpenSession(null)}
-      onEdit={(s) => { setOpenSession(null); setEditingSession(s); }}
-    />
-  ) : creating || editingSession ? (
+  // Background page
+  const bgPage = creating || editingSession ? (
     <SessionNew
       user={user}
       prefillVenue={prefillVenue}
@@ -133,8 +115,6 @@ export default function App() {
       onGoingClick={() => {}}
       onHostHere={(venue) => { setPrefillVenue(venue); setCreating(true); }}
     />
-  ) : tab === "wishlist" ? (
-    <PulsePage user={user} />
   ) : tab === "profile" ? (
     <ProfilePage
       user={user}
@@ -144,28 +124,21 @@ export default function App() {
       onEditSession={(s) => setEditingSession(s)}
     />
   ) : (
-    // "campus" — show Sessions behind the modal
+    // campus — sessions behind the map overlay
     <Sessions user={user} onOpen={setOpenSession} onCreate={() => setCreating(true)} />
   );
 
-  // Tab click: campus opens modal, others navigate
   function handleTabClick(next: Tab) {
     tap();
-    if (next === "campus") {
-      navigate("/campus");
-      return;
-    }
     navigate(TAB_TO_PATH[next]);
   }
 
-  const hideChrome = !!openSession || creating;
+  // Only hide chrome for create/edit (full-screen forms)
+  const hideChrome = creating || !!editingSession;
 
   return (
-    <div
-      className="min-h-screen flex"
-      style={{ background: COLOR.bg }}
-    >
-      {/* Desktop left rail */}
+    <div className="min-h-screen flex" style={{ background: COLOR.bg }}>
+      {/* Desktop sidebar */}
       {!hideChrome && (
         <aside
           className="hidden md:flex flex-col w-56 lg:w-60 border-r py-8 px-5 sticky top-0 h-screen"
@@ -174,10 +147,9 @@ export default function App() {
           <div className="mb-10">
             <Logo height={28} />
           </div>
-
           <nav className="flex flex-col gap-1">
             {LEFT_NAV.map(({ key, label, Icon }) => {
-              const active = key === "campus" ? showCampusModal : (tab === key && !showCampusModal);
+              const active = tab === key;
               return (
                 <button
                   key={key}
@@ -195,7 +167,6 @@ export default function App() {
                 </button>
               );
             })}
-            {/* Post a session — desktop CTA */}
             <button
               onClick={() => { tap(); setCreating(true); }}
               className="flex items-center gap-2 px-3 py-2.5 mt-2 rounded-[10px] text-left transition-colors"
@@ -205,18 +176,102 @@ export default function App() {
               <span className="text-sm" style={{ fontWeight: 700 }}>Create event</span>
             </button>
           </nav>
-
           <div className="flex-1" />
-          <p className="t-meta">
-            © {new Date().getFullYear()} Pulse · ISB Mohali
-          </p>
+          <p className="t-meta">© {new Date().getFullYear()} Pulse · ISB Mohali</p>
         </aside>
       )}
 
       {/* Main content */}
       <main className="flex-1 min-w-0 pb-24 md:pb-0">
-        {page}
+        {bgPage}
       </main>
+
+      {/* Session detail modal / bottom sheet */}
+      {openSession && (
+        <>
+          {/* Backdrop */}
+          <div
+            onClick={() => setOpenSession(null)}
+            style={{
+              position: "fixed",
+              inset: 0,
+              background: "rgba(0,0,0,0.45)",
+              backdropFilter: "blur(6px)",
+              WebkitBackdropFilter: "blur(6px)",
+              zIndex: 200,
+            }}
+          />
+
+          {isMobile ? (
+            /* Mobile: bottom sheet */
+            <div
+              style={{
+                position: "fixed",
+                left: 0,
+                right: 0,
+                bottom: 0,
+                height: "90vh",
+                borderRadius: "20px 20px 0 0",
+                background: COLOR.bg,
+                zIndex: 201,
+                display: "flex",
+                flexDirection: "column",
+                overflow: "hidden",
+                boxShadow: "0 -8px 48px rgba(0,0,0,0.18)",
+              }}
+            >
+              {/* Drag handle */}
+              <div style={{ display: "flex", justifyContent: "center", paddingTop: 12, paddingBottom: 4, flexShrink: 0 }}>
+                <div style={{ width: 36, height: 4, borderRadius: 2, background: COLOR.borderLight }} />
+              </div>
+              <SessionDetail
+                session={openSession}
+                user={user}
+                onBack={() => setOpenSession(null)}
+                onEdit={(s) => { setOpenSession(null); setEditingSession(s); }}
+              />
+            </div>
+          ) : (
+            /* Desktop: centered modal */
+            <div
+              style={{
+                position: "fixed",
+                top: "50%",
+                left: "50%",
+                transform: "translate(-50%, -50%)",
+                width: "min(580px, 90vw)",
+                height: "88vh",
+                borderRadius: 20,
+                background: COLOR.bg,
+                zIndex: 201,
+                display: "flex",
+                flexDirection: "column",
+                overflow: "hidden",
+                boxShadow: "0 24px 80px rgba(0,0,0,0.22)",
+              }}
+            >
+              <SessionDetail
+                session={openSession}
+                user={user}
+                onBack={() => setOpenSession(null)}
+                onEdit={(s) => { setOpenSession(null); setEditingSession(s); }}
+              />
+            </div>
+          )}
+        </>
+      )}
+
+      {/* Campus heatmap overlay — renders above content, below header+nav */}
+      {tab === "campus" && !hideChrome && (
+        <CampusHeatmap
+          locations={campusLocations}
+          myLocation={myLocationState}
+          onClose={() => navigate(-1)}
+          onEnableSharing={() => {
+            if (user && !user.location_sharing) updateUser({ location_sharing: true });
+          }}
+        />
+      )}
 
       {/* Mobile bottom nav */}
       {!hideChrome && (
@@ -246,7 +301,6 @@ export default function App() {
                     className="flex-1 flex flex-col items-center gap-0.5 relative"
                   >
                     <div
-                      className="flex items-center justify-center"
                       style={{
                         width: 42,
                         height: 42,
@@ -254,6 +308,9 @@ export default function App() {
                         background: COLOR.navy,
                         marginTop: -18,
                         boxShadow: "0 4px 16px rgba(28,58,110,0.35)",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
                       }}
                     >
                       <Plus size={20} strokeWidth={2.25} color="#fff" />
@@ -261,8 +318,7 @@ export default function App() {
                   </button>
                 );
               }
-              const isCampus = key === "campus";
-              const visuallyActive = isCampus ? showCampusModal : (tab === key && !showCampusModal);
+              const visuallyActive = tab === key;
               return (
                 <button
                   key={key}
@@ -276,10 +332,7 @@ export default function App() {
                   />
                   <span
                     className="text-[10px]"
-                    style={{
-                      color: visuallyActive ? COLOR.navy : COLOR.ink3,
-                      fontWeight: 600,
-                    }}
+                    style={{ color: visuallyActive ? COLOR.navy : COLOR.ink3, fontWeight: 600 }}
                   >
                     {label}
                   </span>
@@ -289,7 +342,7 @@ export default function App() {
                       style={{ background: COLOR.navy }}
                     />
                   )}
-                  {isCampus && campusLocations.length > 0 && (
+                  {key === "campus" && campusLocations.length > 0 && (
                     <span
                       className="absolute"
                       style={{
@@ -310,26 +363,15 @@ export default function App() {
         </nav>
       )}
 
-      {/* Campus map modal */}
-      {showCampusModal && (
-        <CampusHeatmap
-          locations={campusLocations}
-          myLocation={myLocationState}
-          onClose={() => navigate(-1)}
-          onEnableSharing={() => {
-            if (user && !user.location_sharing) updateUser({ location_sharing: true });
-          }}
-        />
-      )}
-
       {/* Mobile header */}
       {!hideChrome && (
         <header
           className="md:hidden fixed top-0 left-0 right-0 z-30 px-5 py-3 flex items-center border-b"
           style={{
-            background: "rgba(244,242,236,0.92)",
+            background: "rgba(255,255,255,0.92)",
             borderColor: COLOR.borderLight,
             backdropFilter: "blur(12px)",
+            WebkitBackdropFilter: "blur(12px)",
           }}
         >
           <LogoMark size={28} />

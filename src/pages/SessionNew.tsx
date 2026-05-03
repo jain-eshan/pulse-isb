@@ -3,7 +3,7 @@
  * Category + subcategory picker, cover preview, clean form styling, edit mode
  */
 import { useState } from "react";
-import { ArrowLeft, Sparkles, AlertCircle, Image } from "lucide-react";
+import { ArrowLeft, Image } from "lucide-react";
 import { useSessions } from "../hooks/useSessions";
 import type { User, Interest, Session, EventCategory } from "../types";
 import { INTERESTS } from "../types";
@@ -17,8 +17,6 @@ type Props = { user: User; onDone: () => void; prefillVenue?: string; editSessio
 export default function SessionNew({ user, onDone, prefillVenue, editSession }: Props) {
   const { createSession } = useSessions(user);
   const isEdit = !!editSession;
-  const [mode, setMode] = useState<"paste" | "form">(prefillVenue || editSession ? "form" : "paste");
-  const [paste, setPaste] = useState("");
   const [title, setTitle] = useState(editSession?.title ?? "");
   const [description, setDescription] = useState(editSession?.description ?? "");
   const [startsAt, setStartsAt] = useState(editSession?.starts_at ? toLocalDatetime(editSession.starts_at) : "");
@@ -30,45 +28,9 @@ export default function SessionNew({ user, onDone, prefillVenue, editSession }: 
   const [customSections, setCustomSections] = useState<SectionCode[]>([]);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
-  const [parseWarn, setParseWarn] = useState(false);
 
   const subcategories = category ? SUBCATEGORIES[category] : [];
   const catColor = category ? CATEGORY_COLOR[category.toLowerCase()] : null;
-
-  async function handleParse() {
-    if (!paste.trim()) return;
-    tap();
-    setBusy(true);
-    setErr(null);
-    setParseWarn(false);
-    try {
-      const r = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/parse-session`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-          },
-          body: JSON.stringify({ text: paste }),
-        }
-      );
-      if (!r.ok) throw new Error(await r.text());
-      const parsed = await r.json();
-      if (parsed.title) setTitle(parsed.title);
-      if (parsed.description) setDescription(parsed.description);
-      if (parsed.starts_at) setStartsAt(toLocalDatetime(parsed.starts_at));
-      if (parsed.venue) setVenue(parsed.venue);
-      if (parsed.tags?.length)
-        setTags(parsed.tags.filter((t: string) => INTERESTS.some((i) => i.id === t)) as Interest[]);
-      setMode("form");
-    } catch {
-      setParseWarn(true);
-      setMode("form");
-    } finally {
-      setBusy(false);
-    }
-  }
 
   async function handleSubmit() {
     if (!title.trim()) { setErr("Title is required"); return; }
@@ -135,78 +97,12 @@ export default function SessionNew({ user, onDone, prefillVenue, editSession }: 
           {isEdit ? "Edit" : "Create"} <em>event</em>
         </h1>
         <p style={{ fontSize: 14, color: COLOR.ink2, fontFamily: FONT.sans, marginTop: 6 }}>
-          {isEdit ? "Update your event details." : "Paste a WhatsApp message, or fill it in manually."}
+          {isEdit ? "Update your event details." : "Fill in the details and your cohort will see it instantly."}
         </p>
       </header>
 
       <main className="px-4 md:px-8 max-w-2xl mt-6 space-y-3">
-        {/* Paste mode */}
-        {mode === "paste" && !isEdit && (
-          <div className="card" style={{ padding: "24px" }}>
-            <label
-              style={{
-                fontSize: 11,
-                fontWeight: 700,
-                color: COLOR.ink3,
-                letterSpacing: "0.08em",
-                textTransform: "uppercase",
-                fontFamily: FONT.sans,
-                display: "block",
-                marginBottom: 10,
-              }}
-            >
-              Paste announcement
-            </label>
-            <textarea
-              value={paste}
-              onChange={(e) => setPaste(e.target.value)}
-              rows={6}
-              placeholder="e.g. Consulting P2P — tonight at 9PM, LT3. Speakers from Bain & Deloitte."
-              style={{
-                width: "100%",
-                padding: "14px 16px",
-                borderRadius: 12,
-                border: `1px solid ${COLOR.border}`,
-                background: COLOR.bgSoft,
-                color: COLOR.ink,
-                fontFamily: FONT.sans,
-                fontSize: 14,
-                lineHeight: 1.6,
-                resize: "none",
-                outline: "none",
-              }}
-            />
-            <button
-              onClick={handleParse}
-              disabled={busy || !paste.trim()}
-              className="btn-primary w-full mt-4"
-              style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}
-            >
-              <Sparkles size={15} />
-              {busy ? "Reading..." : "Parse with AI"}
-            </button>
-            <button
-              onClick={() => setMode("form")}
-              style={{
-                width: "100%",
-                marginTop: 12,
-                fontSize: 13,
-                fontWeight: 600,
-                color: COLOR.ink2,
-                fontFamily: FONT.sans,
-                background: "transparent",
-                border: "none",
-                cursor: "pointer",
-              }}
-            >
-              Or fill in manually →
-            </button>
-          </div>
-        )}
-
-        {/* Form mode */}
-        {mode === "form" && (
-          <div className="space-y-4">
+        <div className="space-y-4">
             {/* Cover preview */}
             <div className="card" style={{ overflow: "hidden" }}>
               <div style={{ borderRadius: "16px 16px 0 0", overflow: "hidden" }}>
@@ -224,26 +120,6 @@ export default function SessionNew({ user, onDone, prefillVenue, editSession }: 
                 </p>
               </div>
             </div>
-
-            {/* Parse warning */}
-            {parseWarn && (
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "flex-start",
-                  gap: 10,
-                  borderRadius: 12,
-                  padding: "12px 16px",
-                  background: COLOR.amberTint,
-                  border: `1px solid ${COLOR.amber}22`,
-                }}
-              >
-                <AlertCircle size={16} strokeWidth={1.75} style={{ color: COLOR.amber, flexShrink: 0, marginTop: 1 }} />
-                <p style={{ fontSize: 13, color: "#7A5000", fontFamily: FONT.sans }}>
-                  Auto-parse isn't available right now. Fill in below.
-                </p>
-              </div>
-            )}
 
             {err && (
               <div
@@ -438,14 +314,6 @@ export default function SessionNew({ user, onDone, prefillVenue, editSession }: 
 
               {/* Submit */}
               <div className="flex gap-2 mt-6">
-                {!isEdit && (
-                  <button
-                    onClick={() => { setParseWarn(false); setMode("paste"); }}
-                    className="btn-ghost"
-                  >
-                    ← Paste
-                  </button>
-                )}
                 <button
                   onClick={handleSubmit}
                   disabled={busy}
@@ -458,7 +326,6 @@ export default function SessionNew({ user, onDone, prefillVenue, editSession }: 
               </div>
             </div>
           </div>
-        )}
       </main>
     </div>
   );
