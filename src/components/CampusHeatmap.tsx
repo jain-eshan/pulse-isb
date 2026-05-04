@@ -292,12 +292,13 @@ export default function CampusHeatmap({
   return (
     <div
       style={{
-        position: "fixed",
-        inset: 0,
-        zIndex: 20,
+        position: "relative",
+        width: "100%",
+        height: "calc(100dvh - 120px)",
         background: COLOR.bg,
         display: "flex",
         flexDirection: "column",
+        borderRadius: 0,
       }}
     >
       <style>{`
@@ -318,7 +319,7 @@ export default function CampusHeatmap({
       <div
         style={{
           position: "absolute",
-          top: "calc(env(safe-area-inset-top) + 66px)",
+          top: 14,
           left: 12,
           right: 12,
           zIndex: 1000,
@@ -441,7 +442,7 @@ export default function CampusHeatmap({
       <div
         style={{
           position: "absolute",
-          bottom: "calc(env(safe-area-inset-bottom) + 80px)",
+          bottom: 16,
           left: 12,
           zIndex: 1000,
           display: "flex",
@@ -549,7 +550,7 @@ export default function CampusHeatmap({
         <div
           style={{
             position: "absolute",
-            bottom: "calc(env(safe-area-inset-bottom) + 80px)",
+            bottom: 16,
             left: 96,
             right: 12,
             zIndex: 1000,

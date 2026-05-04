@@ -82,7 +82,7 @@ export default function ProfilePage({
       {/* Profile header card */}
       <div
         style={{
-          padding: "48px 20px 24px",
+          padding: "68px 20px 24px",
           background: `linear-gradient(180deg, ${COLOR.navyTint} 0%, ${COLOR.bg} 100%)`,
         }}
       >

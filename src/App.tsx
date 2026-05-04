@@ -123,8 +123,16 @@ export default function App() {
       onOpenSession={setOpenSession}
       onEditSession={(s) => setEditingSession(s)}
     />
+  ) : tab === "campus" ? (
+    <CampusHeatmap
+      locations={campusLocations}
+      myLocation={myLocationState}
+      onClose={() => navigate("/")}
+      onEnableSharing={() => {
+        if (user && !user.location_sharing) updateUser({ location_sharing: true });
+      }}
+    />
   ) : (
-    // campus — sessions behind the map overlay
     <Sessions user={user} onOpen={setOpenSession} onCreate={() => setCreating(true)} />
   );
 
@@ -182,7 +190,7 @@ export default function App() {
       )}
 
       {/* Main content */}
-      <main className="flex-1 min-w-0 pb-24 md:pb-0">
+      <main className={`flex-1 min-w-0 ${tab === "campus" ? "" : "pb-24 md:pb-0"}`}>
         {bgPage}
       </main>
 
@@ -259,18 +267,6 @@ export default function App() {
             </div>
           )}
         </>
-      )}
-
-      {/* Campus heatmap overlay — renders above content, below header+nav */}
-      {tab === "campus" && !hideChrome && (
-        <CampusHeatmap
-          locations={campusLocations}
-          myLocation={myLocationState}
-          onClose={() => navigate(-1)}
-          onEnableSharing={() => {
-            if (user && !user.location_sharing) updateUser({ location_sharing: true });
-          }}
-        />
       )}
 
       {/* Mobile bottom nav */}

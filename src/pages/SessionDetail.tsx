@@ -168,7 +168,7 @@ export default function SessionDetail({ session, user, onBack, onEdit }: Props) 
   }
 
   return (
-    <div style={{ height: "100%", position: "relative", background: COLOR.bg, display: "flex", flexDirection: "column" }}>
+    <div style={{ flex: 1, minHeight: 0, position: "relative", background: COLOR.bg, display: "flex", flexDirection: "column" }}>
       {/* Floating back + edit */}
       <div
         style={{

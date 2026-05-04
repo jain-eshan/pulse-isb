@@ -1,36 +1,85 @@
 /**
- * SessionNew — Create / Edit event form — Luma-inspired redesign v3
- * Category + subcategory picker, cover preview, clean form styling, edit mode
+ * SessionNew — Luma-style Create / Edit event
+ * Desktop: cover preview (left) + inline form (right)
+ * Mobile: cover top, form below
+ * Cover image upload via Supabase Storage
  */
-import { useState } from "react";
-import { ArrowLeft, Image } from "lucide-react";
+import { useRef, useState } from "react";
+import {
+  ArrowLeft,
+  Camera,
+  Calendar,
+  MapPin,
+  AlignLeft,
+  Tag,
+  Eye,
+  ChevronDown,
+} from "lucide-react";
+import { supabase } from "../lib/supabase";
 import { useSessions } from "../hooks/useSessions";
 import type { User, Interest, Session, EventCategory } from "../types";
 import { INTERESTS } from "../types";
 import { SECTIONS, sectionByCode, type SectionCode } from "../lib/sections";
 import { COLOR, FONT, EVENT_CATEGORIES, SUBCATEGORIES, CATEGORY_COLOR } from "../lib/pulseTheme";
 import { tap } from "../lib/haptics";
-import CoverBanner from "../components/CoverBanner";
 
 type Props = { user: User; onDone: () => void; prefillVenue?: string; editSession?: Session };
+
+/* ─── Cover gradient themes ─── */
+const COVER_GRADIENTS = [
+  { id: "cosmic",  from: "#1a1a2e", to: "#16213e", via: "#0f3460" },
+  { id: "sunset",  from: "#ff6b6b", to: "#feca57", via: "#ff9ff3" },
+  { id: "ocean",   from: "#0abde3", to: "#10ac84", via: "#48dbfb" },
+  { id: "grape",   from: "#6c5ce7", to: "#a29bfe", via: "#fd79a8" },
+  { id: "forest",  from: "#2d3436", to: "#00b894", via: "#55efc4" },
+];
 
 export default function SessionNew({ user, onDone, prefillVenue, editSession }: Props) {
   const { createSession } = useSessions(user);
   const isEdit = !!editSession;
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   const [title, setTitle] = useState(editSession?.title ?? "");
   const [description, setDescription] = useState(editSession?.description ?? "");
   const [startsAt, setStartsAt] = useState(editSession?.starts_at ? toLocalDatetime(editSession.starts_at) : "");
+  const [endsAt, setEndsAt] = useState(editSession?.ends_at ? toLocalDatetime(editSession.ends_at) : "");
   const [venue, setVenue] = useState(editSession?.venue ?? prefillVenue ?? "");
   const [tags, setTags] = useState<Interest[]>((editSession?.tags ?? []) as Interest[]);
   const [category, setCategory] = useState<EventCategory | "">(editSession?.category ?? "");
   const [subcategory, setSubcategory] = useState(editSession?.subcategory ?? "");
   const [visibility, setVisibility] = useState<"all" | "section" | "ogsg" | "custom">("all");
   const [customSections, setCustomSections] = useState<SectionCode[]>([]);
+  const [showOptions, setShowOptions] = useState(false);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
+  // Cover image
+  const [coverFile, setCoverFile] = useState<File | null>(null);
+  const [coverPreview, setCoverPreview] = useState<string | null>(editSession?.cover_image_url ?? null);
+  const [coverGradient, setCoverGradient] = useState(COVER_GRADIENTS[0].id);
+
   const subcategories = category ? SUBCATEGORIES[category] : [];
   const catColor = category ? CATEGORY_COLOR[category.toLowerCase()] : null;
+  const activeGradient = COVER_GRADIENTS.find((g) => g.id === coverGradient) ?? COVER_GRADIENTS[0];
+
+  function handleCoverSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setCoverFile(file);
+    setCoverPreview(URL.createObjectURL(file));
+  }
+
+  async function uploadCover(): Promise<string | undefined> {
+    if (!coverFile) return coverPreview ?? undefined;
+    const ext = coverFile.name.split(".").pop() ?? "jpg";
+    const path = `${user.id}/${Date.now()}.${ext}`;
+    const { error } = await supabase.storage
+      .from("session-covers")
+      .upload(path, coverFile, { upsert: true });
+    if (error) return undefined;
+    const { data } = supabase.storage.from("session-covers").getPublicUrl(path);
+    return data.publicUrl;
+  }
 
   async function handleSubmit() {
     if (!title.trim()) { setErr("Title is required"); return; }
@@ -39,6 +88,7 @@ export default function SessionNew({ user, onDone, prefillVenue, editSession }: 
     setBusy(true);
     setErr(null);
     try {
+      const cover_image_url = await uploadCover();
       const visible_to_sections =
         visibility === "section" && user.section ? [user.section] :
         visibility === "custom" ? customSections : [];
@@ -49,10 +99,12 @@ export default function SessionNew({ user, onDone, prefillVenue, editSession }: 
         title: title.trim(),
         description: description.trim() || undefined,
         starts_at: new Date(startsAt).toISOString(),
+        ends_at: endsAt ? new Date(endsAt).toISOString() : undefined,
         venue: venue.trim() || undefined,
         tags,
         category: category || undefined,
         subcategory: subcategory || undefined,
+        cover_image_url,
         visible_to_sections,
         visible_to_ogsgs,
       } as Partial<Session>);
@@ -64,8 +116,12 @@ export default function SessionNew({ user, onDone, prefillVenue, editSession }: 
   }
 
   return (
-    <div className="min-h-screen pb-16" style={{ background: COLOR.bg }}>
-      <header className="px-5 md:px-8 pt-6 max-w-2xl">
+    <div className="min-h-screen" style={{ background: COLOR.bg }}>
+      {/* Top bar */}
+      <div
+        className="flex items-center justify-between px-5 md:px-8 pt-5 pb-2"
+        style={{ maxWidth: 1000, margin: "0 auto" }}
+      >
         <button
           onClick={() => { tap(); onDone(); }}
           style={{
@@ -82,309 +138,461 @@ export default function SessionNew({ user, onDone, prefillVenue, editSession }: 
             padding: 0,
           }}
         >
-          <ArrowLeft size={14} /> Back
+          <ArrowLeft size={16} /> Back
         </button>
-        <h1
+        <button
+          onClick={handleSubmit}
+          disabled={busy}
           style={{
-            fontFamily: FONT.serif,
-            fontSize: 28,
-            fontWeight: 500,
-            color: COLOR.ink,
-            marginTop: 20,
-            lineHeight: 1.1,
+            padding: "8px 20px",
+            borderRadius: 10,
+            fontSize: 13,
+            fontWeight: 700,
+            background: COLOR.navy,
+            color: "#fff",
+            border: "none",
+            cursor: "pointer",
+            fontFamily: FONT.sans,
+            opacity: busy ? 0.6 : 1,
           }}
         >
-          {isEdit ? "Edit" : "Create"} <em>event</em>
-        </h1>
-        <p style={{ fontSize: 14, color: COLOR.ink2, fontFamily: FONT.sans, marginTop: 6 }}>
-          {isEdit ? "Update your event details." : "Fill in the details and your cohort will see it instantly."}
-        </p>
-      </header>
+          {busy ? (isEdit ? "Saving…" : "Creating…") : (isEdit ? "Save Changes" : "Create Event")}
+        </button>
+      </div>
 
-      <main className="px-4 md:px-8 max-w-2xl mt-6 space-y-3">
-        <div className="space-y-4">
-            {/* Cover preview */}
-            <div className="card" style={{ overflow: "hidden" }}>
-              <div style={{ borderRadius: "16px 16px 0 0", overflow: "hidden" }}>
-                <CoverBanner
-                  title={title || "Your event title"}
-                  tag={tags[0] || (category?.toLowerCase())}
-                  height={140}
-                  showPill={!!(category || tags[0])}
-                />
-              </div>
-              <div style={{ padding: "10px 16px", display: "flex", alignItems: "center", gap: 8 }}>
-                <Image size={14} strokeWidth={1.75} color={COLOR.ink3} />
-                <p style={{ fontSize: 11, color: COLOR.ink3, fontFamily: FONT.sans }}>
-                  Cover image upload coming soon — gradient auto-generated from category
-                </p>
-              </div>
-            </div>
-
-            {err && (
+      {/* Main layout — side-by-side on desktop, stacked on mobile */}
+      <div
+        className="flex flex-col md:flex-row gap-6 md:gap-10 px-5 md:px-8 pb-24 mt-4"
+        style={{ maxWidth: 1000, margin: "0 auto" }}
+      >
+        {/* Left: Cover image */}
+        <div className="w-full md:w-[360px] flex-shrink-0">
+          <div
+            onClick={() => fileInputRef.current?.click()}
+            style={{
+              position: "relative",
+              width: "100%",
+              aspectRatio: "1",
+              borderRadius: 16,
+              overflow: "hidden",
+              cursor: "pointer",
+              background: coverPreview
+                ? `url(${coverPreview}) center/cover`
+                : `linear-gradient(135deg, ${activeGradient.from}, ${activeGradient.via}, ${activeGradient.to})`,
+            }}
+          >
+            {/* Upload overlay */}
+            <div
+              style={{
+                position: "absolute",
+                inset: 0,
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 8,
+                background: coverPreview ? "rgba(0,0,0,0.25)" : "rgba(0,0,0,0.08)",
+                opacity: coverPreview ? 0 : 1,
+                transition: "opacity 0.2s",
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.opacity = "1"; }}
+              onMouseLeave={(e) => { if (coverPreview) e.currentTarget.style.opacity = "0"; }}
+            >
               <div
                 style={{
-                  borderRadius: 12,
-                  padding: "12px 16px",
-                  background: "#FEF2F2",
-                  border: "1px solid #FECACA",
-                  color: "#B91C1C",
-                  fontSize: 13,
+                  width: 48,
+                  height: 48,
+                  borderRadius: 24,
+                  background: "rgba(255,255,255,0.2)",
+                  backdropFilter: "blur(8px)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <Camera size={22} color="#fff" strokeWidth={1.75} />
+              </div>
+              <span style={{ fontSize: 13, fontWeight: 600, color: "#fff", fontFamily: FONT.sans }}>
+                {coverPreview ? "Change cover" : "Upload cover image"}
+              </span>
+            </div>
+
+            {/* Category badge */}
+            {(subcategory || category) && (
+              <span
+                style={{
+                  position: "absolute",
+                  bottom: 14,
+                  left: 14,
+                  fontSize: 11,
+                  fontWeight: 700,
+                  padding: "4px 12px",
+                  borderRadius: 8,
+                  background: "rgba(0,0,0,0.5)",
+                  color: "#fff",
+                  backdropFilter: "blur(6px)",
                   fontFamily: FONT.sans,
                 }}
               >
-                {err}
-              </div>
+                {subcategory || category}
+              </span>
             )}
+          </div>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            onChange={handleCoverSelect}
+            style={{ display: "none" }}
+          />
 
-            {/* Main form card */}
-            <div className="card" style={{ padding: "20px" }}>
-              <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
-                <FormField label="Title">
-                  <FormInput value={title} onChange={setTitle} placeholder="e.g. Football @ Rec Center" />
-                </FormField>
-
-                {/* Category picker */}
-                <FormField label="Category">
-                  <div className="flex flex-wrap gap-2">
-                    {EVENT_CATEGORIES.map((cat) => {
-                      const pal = CATEGORY_COLOR[cat.toLowerCase()];
-                      const isActive = category === cat;
-                      return (
-                        <button
-                          key={cat}
-                          onClick={() => {
-                            tap();
-                            if (isActive) { setCategory(""); setSubcategory(""); }
-                            else { setCategory(cat); setSubcategory(""); }
-                          }}
-                          style={{
-                            padding: "7px 14px",
-                            borderRadius: 99,
-                            fontSize: 13,
-                            fontWeight: 600,
-                            background: isActive ? pal?.accent ?? COLOR.navy : COLOR.surface,
-                            color: isActive ? "#fff" : COLOR.ink2,
-                            border: `1.5px solid ${isActive ? pal?.accent ?? COLOR.navy : COLOR.border}`,
-                            fontFamily: FONT.sans,
-                            cursor: "pointer",
-                            transition: "all 0.15s",
-                          }}
-                        >
-                          {cat}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </FormField>
-
-                {/* Subcategory picker */}
-                {subcategories.length > 0 && (
-                  <FormField label="Subcategory">
-                    <div className="flex flex-wrap gap-2">
-                      {subcategories.map((sub) => {
-                        const isActive = subcategory === sub;
-                        return (
-                          <button
-                            key={sub}
-                            onClick={() => { tap(); setSubcategory(isActive ? "" : sub); }}
-                            style={{
-                              padding: "5px 12px",
-                              borderRadius: 99,
-                              fontSize: 12,
-                              fontWeight: 500,
-                              background: isActive ? (catColor?.accent ?? COLOR.navy) + "14" : COLOR.bgSoft,
-                              color: isActive ? catColor?.accent ?? COLOR.navy : COLOR.ink2,
-                              border: `1px solid ${isActive ? (catColor?.accent ?? COLOR.navy) + "40" : COLOR.borderLight}`,
-                              fontFamily: FONT.sans,
-                              cursor: "pointer",
-                              transition: "all 0.15s",
-                            }}
-                          >
-                            {sub}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </FormField>
-                )}
-
-                <FormField label="When">
-                  <FormInput value={startsAt} onChange={setStartsAt} type="datetime-local" />
-                </FormField>
-
-                <FormField label="Venue">
-                  <FormInput value={venue} onChange={setVenue} placeholder="Rec Center, LT3, Zoom link..." />
-                </FormField>
-
-                <FormField label="Description">
-                  <textarea
-                    rows={3}
-                    value={description}
-                    onChange={(e) => setDescription(e.target.value)}
-                    placeholder="What's this about? Who's it for?"
-                    style={{
-                      width: "100%",
-                      padding: "12px 14px",
-                      borderRadius: 12,
-                      border: `1px solid ${COLOR.border}`,
-                      background: COLOR.bgSoft,
-                      color: COLOR.ink,
-                      fontFamily: FONT.sans,
-                      fontSize: 14,
-                      lineHeight: 1.6,
-                      resize: "none",
-                      outline: "none",
-                    }}
-                  />
-                </FormField>
-
-                {/* Legacy interest tags — still shown but de-emphasized */}
-                <FormField label="Tags (optional)">
-                  <div className="flex flex-wrap gap-2">
-                    {INTERESTS.map((it) => {
-                      const on = tags.includes(it.id);
-                      return (
-                        <button
-                          key={it.id}
-                          onClick={() => {
-                            tap();
-                            setTags((p) => on ? p.filter((x) => x !== it.id) : [...p, it.id]);
-                          }}
-                          style={{
-                            padding: "5px 12px",
-                            borderRadius: 99,
-                            fontSize: 12,
-                            fontWeight: 600,
-                            background: on ? COLOR.navy : COLOR.surface,
-                            color: on ? "#fff" : COLOR.ink2,
-                            border: `1.5px solid ${on ? COLOR.navy : COLOR.border}`,
-                            fontFamily: FONT.sans,
-                            cursor: "pointer",
-                            transition: "all 0.15s",
-                          }}
-                        >
-                          {it.label}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </FormField>
-
-                <FormField label="Who can see this?">
-                  <div className="flex flex-wrap gap-2">
-                    <button onClick={() => setVisibility("all")} className="chip" data-active={visibility === "all"}>
-                      Everyone
-                    </button>
-                    {user.section && (
-                      <button onClick={() => setVisibility("section")} className="chip" data-active={visibility === "section"}>
-                        Just {sectionByCode(user.section)?.name ?? "my section"}
-                      </button>
-                    )}
-                    {user.section && user.ogsg && (
-                      <button onClick={() => setVisibility("ogsg")} className="chip" data-active={visibility === "ogsg"}>
-                        My OGSG only
-                      </button>
-                    )}
-                    <button onClick={() => setVisibility("custom")} className="chip" data-active={visibility === "custom"}>
-                      Custom
-                    </button>
-                  </div>
-                  {visibility === "custom" && (
-                    <div className="flex flex-wrap gap-2 mt-3">
-                      {SECTIONS.map((s) => {
-                        const on = customSections.includes(s.code);
-                        return (
-                          <button
-                            key={s.code}
-                            onClick={() =>
-                              setCustomSections((p) => (on ? p.filter((x) => x !== s.code) : [...p, s.code]))
-                            }
-                            className="chip"
-                            data-active={on}
-                          >
-                            {s.name}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  )}
-                </FormField>
-              </div>
-
-              {/* Submit */}
-              <div className="flex gap-2 mt-6">
+          {/* Gradient theme picker (when no uploaded image) */}
+          {!coverPreview && (
+            <div className="flex items-center gap-2 mt-3">
+              <span style={{ fontSize: 11, color: COLOR.ink3, fontFamily: FONT.sans, fontWeight: 600, marginRight: 4 }}>
+                Theme
+              </span>
+              {COVER_GRADIENTS.map((g) => (
                 <button
-                  onClick={handleSubmit}
-                  disabled={busy}
-                  className="btn-primary flex-1"
+                  key={g.id}
+                  onClick={() => setCoverGradient(g.id)}
+                  style={{
+                    width: 28,
+                    height: 28,
+                    borderRadius: 8,
+                    background: `linear-gradient(135deg, ${g.from}, ${g.to})`,
+                    border: coverGradient === g.id ? `2px solid ${COLOR.navy}` : "2px solid transparent",
+                    cursor: "pointer",
+                    transition: "border 0.15s",
+                  }}
+                />
+              ))}
+            </div>
+          )}
+
+          {/* No cover banner — use gradient fallback when no image */}
+        </div>
+
+        {/* Right: Form fields — Luma inline style */}
+        <div className="flex-1 min-w-0">
+          {/* Title — large serif input */}
+          <input
+            type="text"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="Event Name"
+            style={{
+              width: "100%",
+              fontFamily: FONT.serif,
+              fontSize: 28,
+              fontWeight: 500,
+              color: COLOR.ink,
+              background: "transparent",
+              border: "none",
+              outline: "none",
+              padding: "8px 0",
+              lineHeight: 1.2,
+            }}
+          />
+
+          {/* Category + subcategory */}
+          <div className="flex flex-wrap items-center gap-2 mt-2 mb-4">
+            {EVENT_CATEGORIES.map((cat) => {
+              const pal = CATEGORY_COLOR[cat.toLowerCase()];
+              const isActive = category === cat;
+              return (
+                <button
+                  key={cat}
+                  onClick={() => {
+                    tap();
+                    if (isActive) { setCategory(""); setSubcategory(""); }
+                    else { setCategory(cat); setSubcategory(""); }
+                  }}
+                  style={{
+                    padding: "5px 14px",
+                    borderRadius: 8,
+                    fontSize: 12,
+                    fontWeight: 600,
+                    background: isActive ? pal?.accent ?? COLOR.navy : COLOR.bgSoft,
+                    color: isActive ? "#fff" : COLOR.ink2,
+                    border: "none",
+                    fontFamily: FONT.sans,
+                    cursor: "pointer",
+                    transition: "all 0.15s",
+                  }}
                 >
-                  {busy
-                    ? isEdit ? "Saving..." : "Posting..."
-                    : isEdit ? "Save changes" : "Create event"}
+                  {cat}
                 </button>
+              );
+            })}
+          </div>
+          {subcategories.length > 0 && (
+            <div className="flex flex-wrap gap-2 mb-4">
+              {subcategories.map((sub) => {
+                const isActive = subcategory === sub;
+                return (
+                  <button
+                    key={sub}
+                    onClick={() => { tap(); setSubcategory(isActive ? "" : sub); }}
+                    style={{
+                      padding: "4px 12px",
+                      borderRadius: 8,
+                      fontSize: 11,
+                      fontWeight: 500,
+                      background: isActive ? (catColor?.accent ?? COLOR.navy) + "14" : COLOR.bgSoft,
+                      color: isActive ? catColor?.accent ?? COLOR.navy : COLOR.ink2,
+                      border: "none",
+                      fontFamily: FONT.sans,
+                      cursor: "pointer",
+                    }}
+                  >
+                    {sub}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Divider */}
+          <div style={{ height: 1, background: COLOR.borderLight, margin: "4px 0" }} />
+
+          {/* Date row */}
+          <FieldRow icon={<Calendar size={18} strokeWidth={1.5} color={COLOR.ink3} />}>
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-6 flex-1">
+              <div className="flex items-center gap-3 flex-1">
+                <span style={{ fontSize: 13, color: COLOR.ink3, fontFamily: FONT.sans, fontWeight: 600, minWidth: 36 }}>Start</span>
+                <input
+                  type="datetime-local"
+                  value={startsAt}
+                  onChange={(e) => setStartsAt(e.target.value)}
+                  style={inlineInputStyle}
+                />
+              </div>
+              <div className="flex items-center gap-3 flex-1">
+                <span style={{ fontSize: 13, color: COLOR.ink3, fontFamily: FONT.sans, fontWeight: 600, minWidth: 36 }}>End</span>
+                <input
+                  type="datetime-local"
+                  value={endsAt}
+                  onChange={(e) => setEndsAt(e.target.value)}
+                  style={inlineInputStyle}
+                />
               </div>
             </div>
-          </div>
-      </main>
+          </FieldRow>
+
+          {/* Venue row */}
+          <FieldRow icon={<MapPin size={18} strokeWidth={1.5} color={COLOR.ink3} />}>
+            <input
+              type="text"
+              value={venue}
+              onChange={(e) => setVenue(e.target.value)}
+              placeholder="Add Event Location"
+              style={{ ...inlineInputStyle, flex: 1 }}
+            />
+          </FieldRow>
+
+          {/* Description row */}
+          <FieldRow icon={<AlignLeft size={18} strokeWidth={1.5} color={COLOR.ink3} />}>
+            <textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Add Description"
+              rows={3}
+              style={{
+                ...inlineInputStyle,
+                flex: 1,
+                resize: "none",
+                lineHeight: 1.6,
+              }}
+            />
+          </FieldRow>
+
+          {/* Tags */}
+          <FieldRow icon={<Tag size={18} strokeWidth={1.5} color={COLOR.ink3} />}>
+            <div className="flex flex-wrap gap-1.5 flex-1">
+              {INTERESTS.map((it) => {
+                const on = tags.includes(it.id);
+                return (
+                  <button
+                    key={it.id}
+                    onClick={() => {
+                      tap();
+                      setTags((p) => on ? p.filter((x) => x !== it.id) : [...p, it.id]);
+                    }}
+                    style={{
+                      padding: "4px 10px",
+                      borderRadius: 6,
+                      fontSize: 12,
+                      fontWeight: 600,
+                      background: on ? COLOR.navy : COLOR.bgSoft,
+                      color: on ? "#fff" : COLOR.ink2,
+                      border: "none",
+                      fontFamily: FONT.sans,
+                      cursor: "pointer",
+                    }}
+                  >
+                    {it.label}
+                  </button>
+                );
+              })}
+            </div>
+          </FieldRow>
+
+          {/* Event Options (collapsible) */}
+          <button
+            onClick={() => setShowOptions(!showOptions)}
+            className="flex items-center gap-2 w-full py-3"
+            style={{
+              background: "transparent",
+              border: "none",
+              borderTop: `1px solid ${COLOR.borderLight}`,
+              cursor: "pointer",
+              fontFamily: FONT.sans,
+              fontSize: 14,
+              fontWeight: 600,
+              color: COLOR.ink,
+            }}
+          >
+            <Eye size={18} strokeWidth={1.5} color={COLOR.ink3} />
+            <span style={{ flex: 1, textAlign: "left" }}>Event Options</span>
+            <ChevronDown
+              size={16}
+              color={COLOR.ink3}
+              style={{ transform: showOptions ? "rotate(180deg)" : "none", transition: "transform 0.2s" }}
+            />
+          </button>
+          {showOptions && (
+            <div style={{ padding: "8px 0 16px 32px" }}>
+              <p style={{ fontSize: 12, fontWeight: 600, color: COLOR.ink3, fontFamily: FONT.sans, marginBottom: 8 }}>
+                Who can see this?
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {(
+                  [
+                    { val: "all" as const, label: "Everyone" },
+                    ...(user.section ? [{ val: "section" as const, label: sectionByCode(user.section)?.name ?? "My section" }] : []),
+                    ...(user.section && user.ogsg ? [{ val: "ogsg" as const, label: "My OGSG" }] : []),
+                    { val: "custom" as const, label: "Custom" },
+                  ] as { val: typeof visibility; label: string }[]
+                ).map(({ val, label }) => (
+                  <button
+                    key={val}
+                    onClick={() => setVisibility(val)}
+                    style={{
+                      padding: "5px 12px",
+                      borderRadius: 8,
+                      fontSize: 12,
+                      fontWeight: 600,
+                      background: visibility === val ? COLOR.navy : COLOR.bgSoft,
+                      color: visibility === val ? "#fff" : COLOR.ink2,
+                      border: "none",
+                      fontFamily: FONT.sans,
+                      cursor: "pointer",
+                    }}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+              {visibility === "custom" && (
+                <div className="flex flex-wrap gap-2 mt-3">
+                  {SECTIONS.map((s) => {
+                    const on = customSections.includes(s.code);
+                    return (
+                      <button
+                        key={s.code}
+                        onClick={() =>
+                          setCustomSections((p) => (on ? p.filter((x) => x !== s.code) : [...p, s.code]))
+                        }
+                        style={{
+                          padding: "4px 10px",
+                          borderRadius: 6,
+                          fontSize: 12,
+                          fontWeight: 600,
+                          background: on ? COLOR.navy : COLOR.bgSoft,
+                          color: on ? "#fff" : COLOR.ink2,
+                          border: "none",
+                          fontFamily: FONT.sans,
+                          cursor: "pointer",
+                        }}
+                      >
+                        {s.name}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Error */}
+          {err && (
+            <div
+              style={{
+                marginTop: 12,
+                borderRadius: 10,
+                padding: "10px 14px",
+                background: "#FEF2F2",
+                border: "1px solid #FECACA",
+                color: "#B91C1C",
+                fontSize: 13,
+                fontFamily: FONT.sans,
+              }}
+            >
+              {err}
+            </div>
+          )}
+
+          {/* Mobile submit (desktop has it in top bar) */}
+          <button
+            onClick={handleSubmit}
+            disabled={busy}
+            className="md:hidden w-full mt-6"
+            style={{
+              padding: "14px 0",
+              borderRadius: 14,
+              fontSize: 15,
+              fontWeight: 700,
+              background: COLOR.navy,
+              color: "#fff",
+              border: "none",
+              cursor: "pointer",
+              fontFamily: FONT.sans,
+              opacity: busy ? 0.6 : 1,
+            }}
+          >
+            {busy ? (isEdit ? "Saving…" : "Creating…") : (isEdit ? "Save Changes" : "Create Event")}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
 
-/* ─── Sub-components ─── */
-function FormField({ label, children }: { label: string; children: React.ReactNode }) {
+/* ─── Inline field row (icon + content, Luma style) ─── */
+function FieldRow({ icon, children }: { icon: React.ReactNode; children: React.ReactNode }) {
   return (
-    <div>
-      <label
-        style={{
-          display: "block",
-          fontSize: 11,
-          fontWeight: 700,
-          color: COLOR.ink3,
-          letterSpacing: "0.08em",
-          textTransform: "uppercase",
-          fontFamily: FONT.sans,
-          marginBottom: 8,
-        }}
-      >
-        {label}
-      </label>
+    <div
+      className="flex items-start gap-3 py-3"
+      style={{ borderTop: `1px solid ${COLOR.borderLight}` }}
+    >
+      <div style={{ paddingTop: 2, flexShrink: 0 }}>{icon}</div>
       {children}
     </div>
   );
 }
 
-function FormInput({
-  value,
-  onChange,
-  placeholder,
-  type = "text",
-}: {
-  value: string;
-  onChange: (v: string) => void;
-  placeholder?: string;
-  type?: string;
-}) {
-  return (
-    <input
-      type={type}
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      placeholder={placeholder}
-      style={{
-        width: "100%",
-        padding: "12px 14px",
-        borderRadius: 12,
-        border: `1px solid ${COLOR.border}`,
-        background: COLOR.bgSoft,
-        color: COLOR.ink,
-        fontFamily: FONT.sans,
-        fontSize: 14,
-        outline: "none",
-      }}
-    />
-  );
-}
+/* ─── Shared inline input style ─── */
+const inlineInputStyle: React.CSSProperties = {
+  width: "100%",
+  padding: "4px 0",
+  fontSize: 14,
+  fontFamily: FONT.sans,
+  color: COLOR.ink,
+  background: "transparent",
+  border: "none",
+  outline: "none",
+};
 
 function toLocalDatetime(iso: string): string {
   try {

@@ -48,7 +48,7 @@ export default function Home({ user, onHostHere }: Props) {
   return (
     <div className="min-h-screen pb-28" style={{ background: COLOR.bg }}>
       {/* Header */}
-      <header className="px-5 md:px-8 pt-10 pb-2 max-w-2xl">
+      <header className="px-5 md:px-8 pt-16 md:pt-10 pb-2 max-w-2xl">
         <p
           style={{
             fontSize: 11,

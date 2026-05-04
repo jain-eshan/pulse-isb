@@ -68,7 +68,7 @@ export default function Sessions({ user, onOpen, onCreate }: Props) {
   return (
     <div className="min-h-screen" style={{ background: COLOR.bg }}>
       {/* Header */}
-      <header className="px-5 md:px-8 pt-10 pb-2">
+      <header className="px-5 md:px-8 pt-16 md:pt-10 pb-2">
         <div className="flex items-center justify-between">
           <div>
             <p
