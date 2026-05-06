@@ -31,6 +31,7 @@ export interface User {
   vibe_friday?: string;
   chaotic_thing?: string;
   onboarded_at?: string;
+  is_admin?: boolean;
 }
 
 export interface Place {

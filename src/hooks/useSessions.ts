@@ -53,14 +53,25 @@ export function useSessions(user: User | null) {
 
   useEffect(() => { refresh(); }, [refresh]);
 
-  useEffect(() => {
-    if (!user) return;
-    // Unique channel name per mount to avoid collisions with stale channels
-    const uid = `sessions-rt-${user.id}-${Date.now()}`;
-    const ch = supabase.channel(uid)
+  // Realtime: only the Sessions listing page should subscribe.
+  // Use a singleton approach — only subscribe if no channel is live yet.
+  // This prevents crashes when multiple hook instances mount simultaneously.
+  const subscribeRealtime = (userId: string) => {
+    // Remove any stale channels for this user first
+    supabase.getChannels()
+      .filter((c) => c.topic.startsWith(`realtime:sessions-rt-${userId}`))
+      .forEach((c) => supabase.removeChannel(c));
+
+    return supabase
+      .channel(`sessions-rt-${userId}-${Date.now()}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "rsvps" }, () => refresh())
       .on("postgres_changes", { event: "*", schema: "public", table: "sessions" }, () => refresh())
       .subscribe();
+  };
+
+  useEffect(() => {
+    if (!user) return;
+    const ch = subscribeRealtime(user.id);
     return () => { supabase.removeChannel(ch); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id]);

@@ -99,16 +99,8 @@ export default function SessionDetail({ session, user, onBack, onEdit }: Props) 
       setAttendees((data ?? []) as unknown as Attendee[]);
     };
     fetchAttendees();
-
-    const ch = supabase
-      .channel(`rsvps-${session.id}-${Date.now()}`)
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "rsvps", filter: `session_id=eq.${session.id}` },
-        fetchAttendees
-      )
-      .subscribe();
-    return () => { supabase.removeChannel(ch); };
+    // No realtime subscription here — useSessions handles it globally.
+    // Attendees refresh after RSVP via the handleRsvp → refresh chain.
   }, [session.id]);
 
   async function handleRsvp(status: RsvpStatus) {

@@ -68,7 +68,7 @@ export default function Sessions({ user, onOpen, onCreate }: Props) {
   return (
     <div className="min-h-screen" style={{ background: COLOR.bg }}>
       {/* Header */}
-      <header className="px-5 md:px-8 pt-16 md:pt-10 pb-2">
+      <header className="px-5 md:px-8 pt-16 md:pt-10 pb-2" style={{ maxWidth: 960 }}>
         <div className="flex items-center justify-between">
           <div>
             <p
@@ -222,7 +222,7 @@ export default function Sessions({ user, onOpen, onCreate }: Props) {
         )}
       </header>
 
-      <main className="px-4 md:px-8 pb-28 pt-4 max-w-2xl">
+      <main className="px-4 md:px-8 pb-28 pt-4" style={{ maxWidth: 960 }}>
         {loading && <SkeletonList />}
 
         {/* Featured event */}
@@ -248,7 +248,13 @@ export default function Sessions({ user, onOpen, onCreate }: Props) {
                   : "More events"}
               </SectionLabel>
             )}
-            <div className="space-y-3">
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))",
+                gap: 12,
+              }}
+            >
               {rest.map((s) => (
                 <SessionCard key={s.id} session={s} onClick={() => onOpen(s)} />
               ))}

@@ -294,7 +294,7 @@ export default function CampusHeatmap({
       style={{
         position: "relative",
         width: "100%",
-        height: "calc(100dvh - 120px)",
+        height: "100dvh",
         background: COLOR.bg,
         display: "flex",
         flexDirection: "column",

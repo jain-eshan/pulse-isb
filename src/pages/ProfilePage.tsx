@@ -10,6 +10,9 @@ import {
   MessageCircle,
   Calendar,
   Edit3,
+  Pencil,
+  X,
+  Check,
 } from "lucide-react";
 import type { User, Session } from "../types";
 import { ISB_SECTIONS, INTERESTS } from "../types";
@@ -25,6 +28,7 @@ interface Props {
   onToggleLocation: (enabled: boolean) => void;
   onOpenSession?: (session: Session) => void;
   onEditSession?: (session: Session) => void;
+  onUpdateProfile?: (updates: Partial<User>) => Promise<void>;
 }
 
 export default function ProfilePage({
@@ -33,11 +37,17 @@ export default function ProfilePage({
   onToggleLocation,
   onOpenSession,
   onEditSession,
+  onUpdateProfile,
 }: Props) {
   const { sessions } = useSessions(user);
   const [linkCode, setLinkCode] = useState<string | null>(null);
   const [linkBusy, setLinkBusy] = useState(false);
   const [profileTab, setProfileTab] = useState<"rsvps" | "hosting">("rsvps");
+  const [editingProfile, setEditingProfile] = useState(false);
+  const [editSection, setEditSection] = useState(user.section ?? "");
+  const [editOgsg, setEditOgsg] = useState(user.ogsg ? String(user.ogsg) : "");
+  const [editCohort, setEditCohort] = useState(user.cohort_year ? String(user.cohort_year) : "");
+  const [savingProfile, setSavingProfile] = useState(false);
 
   const myRsvps = sessions.filter((s) => s.my_rsvp === "going" && s.creator_id !== user.id);
   const myHosted = sessions.filter((s) => s.creator_id === user.id);
@@ -53,6 +63,21 @@ export default function ProfilePage({
 
   const interestLabels =
     user.interests?.map((id) => INTERESTS.find((i) => i.id === id)?.label ?? id) ?? [];
+
+  async function saveProfile() {
+    tap();
+    setSavingProfile(true);
+    try {
+      await onUpdateProfile?.({
+        section: editSection || undefined,
+        ogsg: editOgsg ? Number(editOgsg) : undefined,
+        cohort_year: editCohort ? Number(editCohort) : undefined,
+      });
+      setEditingProfile(false);
+    } finally {
+      setSavingProfile(false);
+    }
+  }
 
   async function requestLinkCode() {
     setLinkBusy(true);
@@ -133,12 +158,28 @@ export default function ProfilePage({
             {user.email}
           </p>
 
-          {/* Info pills */}
-          <div className="flex flex-wrap gap-2 mt-4">
-            <InfoPill label={sectionDisplay} />
+          {/* Info pills + edit button */}
+          <div className="flex flex-wrap gap-2 mt-4 items-center">
+            {user.section ? (
+              <InfoPill label={sectionDisplay} />
+            ) : (
+              <button
+                onClick={() => { tap(); setEditingProfile(true); }}
+                style={{ fontSize: 12, fontWeight: 600, padding: "5px 12px", borderRadius: 99, background: "#FEF3C7", color: "#D97706", fontFamily: FONT.sans, border: "1px dashed #FCD34D", cursor: "pointer" }}
+              >
+                + Add section
+              </button>
+            )}
             {user.ogsg && <InfoPill label={`OGSG ${user.ogsg}`} />}
             <InfoPill label={user.campus === "hyderabad" ? "Hyderabad" : "Mohali"} />
             {user.cohort_year && <InfoPill label={`Class of ${user.cohort_year}`} />}
+            <button
+              onClick={() => { tap(); setEditingProfile(true); }}
+              style={{ width: 28, height: 28, borderRadius: 8, background: COLOR.bgSoft, border: `1px solid ${COLOR.border}`, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}
+              aria-label="Edit profile"
+            >
+              <Pencil size={13} color={COLOR.ink2} />
+            </button>
           </div>
 
           {/* Interests */}
@@ -418,6 +459,99 @@ export default function ProfilePage({
           <LogOut size={14} /> Sign out
         </button>
       </div>
+
+      {/* Edit Profile Modal */}
+      {editingProfile && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 300 }}>
+          <div onClick={() => setEditingProfile(false)} style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.4)" }} />
+          <div
+            style={{
+              position: "absolute",
+              bottom: 0,
+              left: 0,
+              right: 0,
+              background: COLOR.bg,
+              borderRadius: "20px 20px 0 0",
+              padding: "24px 20px 40px",
+              maxWidth: 520,
+              margin: "0 auto",
+              boxShadow: "0 -8px 40px rgba(0,0,0,0.15)",
+            }}
+          >
+            <div className="flex items-center justify-between mb-6">
+              <h2 style={{ fontFamily: FONT.serif, fontSize: 22, fontWeight: 500, color: COLOR.ink }}>
+                Edit Profile
+              </h2>
+              <button onClick={() => setEditingProfile(false)} style={{ width: 32, height: 32, borderRadius: 8, border: `1px solid ${COLOR.border}`, background: "transparent", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <X size={16} color={COLOR.ink2} />
+              </button>
+            </div>
+
+            {/* Section picker */}
+            <div className="mb-4">
+              <p style={{ fontSize: 11, fontWeight: 700, color: COLOR.ink3, fontFamily: FONT.sans, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 8 }}>Section</p>
+              <div className="flex flex-wrap gap-2">
+                {ISB_SECTIONS.map((s) => (
+                  <button
+                    key={s.code}
+                    onClick={() => setEditSection(editSection === s.code ? "" : s.code)}
+                    style={{
+                      padding: "6px 14px",
+                      borderRadius: 8,
+                      fontSize: 13,
+                      fontWeight: 600,
+                      fontFamily: FONT.sans,
+                      cursor: "pointer",
+                      border: "none",
+                      background: editSection === s.code ? COLOR.ink : COLOR.bgSoft,
+                      color: editSection === s.code ? "#fff" : COLOR.ink2,
+                      transition: "all 0.15s",
+                    }}
+                  >
+                    {s.code} — {s.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* OGSG */}
+            <div className="mb-4">
+              <p style={{ fontSize: 11, fontWeight: 700, color: COLOR.ink3, fontFamily: FONT.sans, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 8 }}>OGSG Number</p>
+              <input
+                type="number"
+                min="1"
+                max="20"
+                value={editOgsg}
+                onChange={(e) => setEditOgsg(e.target.value)}
+                placeholder="e.g. 3"
+                style={{ width: "100%", padding: "10px 14px", borderRadius: 10, border: `1px solid ${COLOR.border}`, fontSize: 14, fontFamily: FONT.sans, color: COLOR.ink, background: COLOR.surface, outline: "none" }}
+              />
+            </div>
+
+            {/* Cohort year */}
+            <div className="mb-6">
+              <p style={{ fontSize: 11, fontWeight: 700, color: COLOR.ink3, fontFamily: FONT.sans, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 8 }}>Cohort Year</p>
+              <input
+                type="number"
+                min="2020"
+                max="2030"
+                value={editCohort}
+                onChange={(e) => setEditCohort(e.target.value)}
+                placeholder="e.g. 2025"
+                style={{ width: "100%", padding: "10px 14px", borderRadius: 10, border: `1px solid ${COLOR.border}`, fontSize: 14, fontFamily: FONT.sans, color: COLOR.ink, background: COLOR.surface, outline: "none" }}
+              />
+            </div>
+
+            <button
+              onClick={saveProfile}
+              disabled={savingProfile}
+              style={{ width: "100%", padding: "14px", borderRadius: 12, background: COLOR.ink, color: "#fff", border: "none", fontSize: 15, fontWeight: 700, fontFamily: FONT.sans, cursor: "pointer", opacity: savingProfile ? 0.6 : 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}
+            >
+              <Check size={16} /> {savingProfile ? "Saving…" : "Save Changes"}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

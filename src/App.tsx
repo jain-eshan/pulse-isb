@@ -1,7 +1,7 @@
 import { Component, useEffect, useState } from "react";
 import type { ErrorInfo, ReactNode } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { Calendar, Compass, MapPin, Plus, User as UserIcon } from "lucide-react";
+import { Calendar, Compass, MapPin, Plus, User as UserIcon, ShieldCheck } from "lucide-react";
 import { useAuth } from "./hooks/useAuth";
 import { useLocationBroadcast } from "./hooks/useLocation";
 import { useCampusActivity } from "./hooks/useCampusActivity";
@@ -13,6 +13,7 @@ import SessionDetail from "./pages/SessionDetail";
 import SessionNew from "./pages/SessionNew";
 import Home from "./pages/Home";
 import ProfilePage from "./pages/ProfilePage";
+import AdminPage from "./pages/AdminPage";
 import CampusHeatmap from "./components/CampusHeatmap";
 import Logo, { LogoMark } from "./components/Logo";
 import { COLOR } from "./lib/pulseTheme";
@@ -54,13 +55,14 @@ class ModalErrorBoundary extends Component<
   }
 }
 
-type Tab = "sessions" | "discover" | "campus" | "profile";
+type Tab = "sessions" | "discover" | "campus" | "profile" | "admin";
 
 const PATH_TO_TAB: Record<string, Tab> = {
   "/":         "sessions",
   "/discover": "discover",
   "/campus":   "campus",
   "/profile":  "profile",
+  "/admin":    "admin",
 };
 
 const TAB_TO_PATH: Record<Tab, string> = {
@@ -68,6 +70,7 @@ const TAB_TO_PATH: Record<Tab, string> = {
   discover: "/discover",
   campus:   "/campus",
   profile:  "/profile",
+  admin:    "/admin",
 };
 
 const LEFT_NAV: {
@@ -144,14 +147,7 @@ export default function App() {
   }
 
   // Background page
-  const bgPage = creating || editingSession ? (
-    <SessionNew
-      user={user}
-      prefillVenue={prefillVenue}
-      editSession={editingSession ?? undefined}
-      onDone={() => { setCreating(false); setEditingSession(null); setPrefillVenue(undefined); }}
-    />
-  ) : tab === "sessions" ? (
+  const bgPage = tab === "sessions" ? (
     <Sessions user={user} onOpen={(s) => { console.log("[App] onOpen fired, session:", s.id, s.title); setOpenSession(s); }} onCreate={() => setCreating(true)} />
   ) : tab === "discover" ? (
     <Home
@@ -166,6 +162,7 @@ export default function App() {
       onToggleLocation={(v) => updateUser({ location_sharing: v })}
       onOpenSession={setOpenSession}
       onEditSession={(s) => setEditingSession(s)}
+      onUpdateProfile={async (updates) => { await updateUser(updates); }}
     />
   ) : tab === "campus" ? (
     <CampusHeatmap
@@ -176,6 +173,8 @@ export default function App() {
         if (user && !user.location_sharing) updateUser({ location_sharing: true });
       }}
     />
+  ) : tab === "admin" && user.is_admin ? (
+    <AdminPage user={user} />
   ) : (
     <Sessions user={user} onOpen={setOpenSession} onCreate={() => setCreating(true)} />
   );
@@ -185,8 +184,8 @@ export default function App() {
     navigate(TAB_TO_PATH[next]);
   }
 
-  // Only hide chrome for create/edit (full-screen forms)
-  const hideChrome = creating || !!editingSession;
+  // Keep nav always visible — create/edit renders inline in main content area
+  const hideChrome = false;
 
   return (
     <div className="min-h-screen flex" style={{ background: COLOR.bg }}>
@@ -229,13 +228,30 @@ export default function App() {
             </button>
           </nav>
           <div className="flex-1" />
+          {user.is_admin && (
+            <button
+              onClick={() => handleTabClick("admin")}
+              className="flex items-center gap-3 px-3 py-2.5 rounded-[10px] text-left transition-colors mb-2"
+              style={{ background: tab === "admin" ? "#FEF3C7" : "transparent", color: tab === "admin" ? "#D97706" : COLOR.ink3 }}
+            >
+              <ShieldCheck size={16} strokeWidth={1.75} />
+              <span className="text-sm" style={{ fontWeight: 600 }}>Admin</span>
+            </button>
+          )}
           <p className="t-meta">© {new Date().getFullYear()} Pulse · ISB Mohali</p>
         </aside>
       )}
 
       {/* Main content */}
       <main className={`flex-1 min-w-0 ${tab === "campus" ? "" : "pb-24 md:pb-0"}`}>
-        {bgPage}
+        {(creating || editingSession) ? (
+          <SessionNew
+            user={user}
+            prefillVenue={prefillVenue}
+            editSession={editingSession ?? undefined}
+            onDone={() => { setCreating(false); setEditingSession(null); setPrefillVenue(undefined); }}
+          />
+        ) : bgPage}
       </main>
 
       {/* Session detail — right-side drawer (v3) */}
