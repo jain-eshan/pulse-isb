@@ -12,7 +12,7 @@ ALTER TABLE places ADD COLUMN IF NOT EXISTS google_maps_url text;
 INSERT INTO places (name, category, area, description, budget, google_maps_url, google_rating, review_count, distance_from_campus)
 VALUES (
   'Pal Dhaba',
-  'restaurant',
+  'food',
   'Sector 60, SAS Nagar',
   'No-frills dhaba near campus that ISB students swear by. Buttery dal makhani, fresh rotis, and a cold lassi that fixes everything. Open late — perfect for post-session hunger.',
   'low',

@@ -13,7 +13,7 @@ import { tap } from "../lib/haptics";
 
 interface Props { user: User; }
 
-const CATEGORIES = ["restaurant", "cafe", "nightlife", "travel"];
+const CATEGORIES = ["food", "cafe", "nightlife", "travel"];
 const BUDGETS: { value: "low" | "mid" | "high"; label: string }[] = [
   { value: "low", label: "Budget" },
   { value: "mid", label: "Mid-range" },
@@ -22,7 +22,7 @@ const BUDGETS: { value: "low" | "mid" | "high"; label: string }[] = [
 
 const EMPTY_FORM = {
   name: "",
-  category: "restaurant",
+  category: "food",
   area: "",
   description: "",
   budget: "low" as "low" | "mid" | "high",
