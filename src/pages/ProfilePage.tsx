@@ -170,7 +170,7 @@ export default function ProfilePage({
         <div
           className="flex gap-1"
           style={{
-            background: COLOR.bgSoft,
+            background: "#F0F0EE",
             borderRadius: 12,
             padding: 4,
             marginBottom: 16,
