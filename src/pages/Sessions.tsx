@@ -343,60 +343,67 @@ function inferCategory(tags?: string[]): EventCategory | null {
   return null;
 }
 
-/* ─── Featured card ─── */
+/* ─── Featured card — v3: 200px cover with title overlay ─── */
 function FeaturedCard({ session, onOpen }: { session: Session; onOpen: () => void }) {
   const start = new Date(session.starts_at);
   const day = isToday(start) ? "Today" : format(start, "EEE, d MMM");
   const time = format(start, "h:mm a");
   const going = session.rsvp_counts?.going ?? 0;
-  const sec = sectionByCode(session.creator?.section);
-  const theme = coverTheme(session.tags?.[0]);
 
   return (
     <button
       onClick={onOpen}
       className="text-left w-full"
       style={{
-        borderRadius: 20,
+        borderRadius: 16,
         overflow: "hidden",
-        boxShadow: "0 4px 20px rgba(0,0,0,0.08)",
         background: COLOR.surface,
         border: `1px solid ${COLOR.borderLight}`,
         cursor: "pointer",
+        transition: "box-shadow 0.2s",
       }}
+      onMouseEnter={(e) => { e.currentTarget.style.boxShadow = "0 8px 24px rgba(0,0,0,0.1)"; }}
+      onMouseLeave={(e) => { e.currentTarget.style.boxShadow = "none"; }}
     >
-      {/* Cover image or gradient */}
-      {session.cover_image_url ? (
-        <div
-          style={{
-            height: 180,
-            background: `url(${session.cover_image_url}) center/cover`,
-          }}
-        />
-      ) : (
-        <CoverBanner title="" tag={session.tags?.[0]} height={180} showPill />
-      )}
+      {/* Cover with title overlay */}
+      <div
+        style={{
+          height: 200,
+          position: "relative",
+          overflow: "hidden",
+        }}
+      >
+        {session.cover_image_url ? (
+          <div style={{ position: "absolute", inset: 0, background: `url(${session.cover_image_url}) center/cover` }} />
+        ) : (
+          <CoverBanner title="" tag={session.tags?.[0]} height={200} showPill />
+        )}
+        {/* Gradient overlay for text readability */}
+        <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, rgba(0,0,0,0.6) 0%, transparent 60%)" }} />
+        {/* Title on image */}
+        <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "16px 18px" }}>
+          <h3
+            style={{
+              fontFamily: FONT.sans,
+              fontSize: 20,
+              fontWeight: 800,
+              color: "#fff",
+              lineHeight: 1.2,
+              margin: 0,
+              textShadow: "0 1px 4px rgba(0,0,0,0.3)",
+            }}
+          >
+            {session.title}
+          </h3>
+        </div>
+      </div>
 
-      <div style={{ padding: "16px 18px 18px" }}>
-        {/* Title */}
-        <h3
-          style={{
-            fontFamily: FONT.sans,
-            fontSize: 18,
-            fontWeight: 700,
-            color: COLOR.ink,
-            lineHeight: 1.3,
-            marginBottom: 8,
-          }}
-        >
-          {session.title}
-        </h3>
-
-        {/* Date + venue row */}
-        <div className="flex items-center gap-4 mb-3" style={{ fontSize: 13, color: COLOR.ink2, fontFamily: FONT.sans }}>
+      {/* Info row below cover */}
+      <div style={{ padding: "12px 18px 14px", display: "flex", flexDirection: "column", gap: 6 }}>
+        <div className="flex items-center gap-4" style={{ fontSize: 13, color: COLOR.ink2, fontFamily: FONT.sans }}>
           <span className="flex items-center gap-1.5">
             <Calendar size={13} strokeWidth={1.75} style={{ color: COLOR.ink3 }} />
-            {day} &middot; {time}
+            {day} · {time}
           </span>
           {session.venue && (
             <span className="flex items-center gap-1.5 truncate">
@@ -406,47 +413,40 @@ function FeaturedCard({ session, onOpen }: { session: Session; onOpen: () => voi
           )}
         </div>
 
-        {/* Host + avatars */}
         <div className="flex items-center justify-between">
           {session.creator && (
             <div className="flex items-center gap-2">
-              <div
+              <span
                 style={{
-                  width: 24,
-                  height: 24,
-                  borderRadius: 12,
-                  background: sec?.color ?? theme.strip,
-                  color: "#fff",
-                  fontSize: 10,
-                  fontWeight: 700,
+                  width: 22,
+                  height: 22,
+                  borderRadius: 11,
+                  background: COLOR.bgSoft,
+                  border: `1px solid ${COLOR.borderLight}`,
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
+                  fontSize: 10,
+                  fontWeight: 700,
+                  color: COLOR.ink2,
+                  overflow: "hidden",
                 }}
               >
-                {(session.creator.name?.[0] ?? "?").toUpperCase()}
-              </div>
+                {session.creator.avatar_url ? (
+                  <img src={session.creator.avatar_url} alt="" style={{ width: 22, height: 22, objectFit: "cover" }} />
+                ) : (
+                  (session.creator.name?.[0] ?? "?").toUpperCase()
+                )}
+              </span>
               <span style={{ fontSize: 13, color: COLOR.ink2, fontFamily: FONT.sans }}>
                 {session.creator.name}
               </span>
               <SectionPill code={session.creator.section} size="sm" />
             </div>
           )}
-
           {going > 0 && (
-            <span
-              style={{
-                fontSize: 12,
-                fontWeight: 600,
-                color: COLOR.ink2,
-                fontFamily: FONT.sans,
-                display: "flex",
-                alignItems: "center",
-                gap: 4,
-              }}
-            >
-              <Users size={13} strokeWidth={1.75} />
-              {going} going
+            <span style={{ fontSize: 12, fontWeight: 600, color: COLOR.ink3, fontFamily: FONT.sans, display: "flex", alignItems: "center", gap: 4 }}>
+              <Users size={13} strokeWidth={1.75} /> {going} going
             </span>
           )}
         </div>
