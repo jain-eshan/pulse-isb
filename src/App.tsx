@@ -1,7 +1,7 @@
 import { Component, useEffect, useState } from "react";
 import type { ErrorInfo, ReactNode } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { Calendar, Compass, MapPin, Plus, User as UserIcon, ShieldCheck } from "lucide-react";
+import { Calendar, Compass, MapPin, Plus, User as UserIcon, ShieldCheck, ChevronLeft, Maximize2, Share2 } from "lucide-react";
 import { useAuth } from "./hooks/useAuth";
 import { useLocationBroadcast } from "./hooks/useLocation";
 import { useCampusActivity } from "./hooks/useCampusActivity";
@@ -296,26 +296,48 @@ export default function App() {
                 flexShrink: 0,
               }}
             >
+              {/* Back / close */}
               <button
                 onClick={() => setOpenSession(null)}
-                style={{
-                  width: 32,
-                  height: 32,
-                  borderRadius: 8,
-                  border: `1px solid ${COLOR.border}`,
-                  background: "transparent",
-                  cursor: "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontSize: 16,
-                }}
+                style={{ width: 34, height: 34, borderRadius: 9, border: `1px solid ${COLOR.border}`, background: "transparent", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
                 aria-label="Close"
               >
-                ✕
+                <ChevronLeft size={18} strokeWidth={2} color={COLOR.ink2} />
               </button>
-              <span style={{ fontSize: 12, color: COLOR.ink3, fontWeight: 500 }}>Event Details</span>
-              <div style={{ width: 32 }} />
+
+              <span style={{ fontSize: 11, color: COLOR.ink3, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" }}>Event</span>
+
+              {/* Expand + Share */}
+              <div style={{ display: "flex", gap: 6 }}>
+                <button
+                  onClick={() => {
+                    if (openSession) {
+                      const url = `${window.location.origin}/?session=${openSession.id}`;
+                      if (navigator.share) {
+                        navigator.share({ title: openSession.title, url });
+                      } else {
+                        navigator.clipboard?.writeText(url);
+                      }
+                    }
+                  }}
+                  style={{ width: 34, height: 34, borderRadius: 9, border: `1px solid ${COLOR.border}`, background: "transparent", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
+                  title="Share event"
+                >
+                  <Share2 size={15} color={COLOR.ink2} />
+                </button>
+                <button
+                  onClick={() => {
+                    if (openSession) {
+                      const url = `${window.location.origin}/?session=${openSession.id}`;
+                      window.open(url, "_blank");
+                    }
+                  }}
+                  style={{ width: 34, height: 34, borderRadius: 9, border: `1px solid ${COLOR.border}`, background: "transparent", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
+                  title="Open full page"
+                >
+                  <Maximize2 size={14} color={COLOR.ink2} />
+                </button>
+              </div>
             </div>
             {/* Content */}
             <ModalErrorBoundary onError={() => setOpenSession(null)}>
