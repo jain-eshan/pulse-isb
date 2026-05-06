@@ -55,12 +55,13 @@ export function useSessions(user: User | null) {
 
   useEffect(() => {
     if (!user) return;
-    const ch = supabase.channel("sessions-rt")
+    const ch = supabase.channel(`sessions-rt-${user.id}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "rsvps" }, () => refresh())
       .on("postgres_changes", { event: "*", schema: "public", table: "sessions" }, () => refresh())
       .subscribe();
     return () => { supabase.removeChannel(ch); };
-  }, [user, refresh]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
 
   async function createSession(input: Partial<Session>) {
     if (!user) return null;
