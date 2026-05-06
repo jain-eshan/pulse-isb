@@ -55,7 +55,9 @@ export function useSessions(user: User | null) {
 
   useEffect(() => {
     if (!user) return;
-    const ch = supabase.channel(`sessions-rt-${user.id}`)
+    // Unique channel name per mount to avoid collisions with stale channels
+    const uid = `sessions-rt-${user.id}-${Date.now()}`;
+    const ch = supabase.channel(uid)
       .on("postgres_changes", { event: "*", schema: "public", table: "rsvps" }, () => refresh())
       .on("postgres_changes", { event: "*", schema: "public", table: "sessions" }, () => refresh())
       .subscribe();

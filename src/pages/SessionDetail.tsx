@@ -101,7 +101,7 @@ export default function SessionDetail({ session, user, onBack, onEdit }: Props) 
     fetchAttendees();
 
     const ch = supabase
-      .channel(`rsvps-${session.id}`)
+      .channel(`rsvps-${session.id}-${Date.now()}`)
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "rsvps", filter: `session_id=eq.${session.id}` },
