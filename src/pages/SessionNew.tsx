@@ -158,7 +158,7 @@ export default function SessionNew({ user, onDone, prefillVenue, editSession }: 
             borderRadius: 10,
             fontSize: 13,
             fontWeight: 700,
-            background: COLOR.navy,
+            background: COLOR.ink,
             color: "#fff",
             border: "none",
             cursor: "pointer",
@@ -560,10 +560,10 @@ export default function SessionNew({ user, onDone, prefillVenue, editSession }: 
             className="md:hidden w-full mt-6"
             style={{
               padding: "14px 0",
-              borderRadius: 14,
+              borderRadius: 12,
               fontSize: 15,
               fontWeight: 700,
-              background: COLOR.navy,
+              background: COLOR.ink,
               color: "#fff",
               border: "none",
               cursor: "pointer",

@@ -222,7 +222,7 @@ export default function App() {
             <button
               onClick={() => { tap(); setCreating(true); }}
               className="flex items-center gap-2 px-3 py-2.5 mt-2 rounded-[10px] text-left transition-colors"
-              style={{ background: COLOR.navy, color: "#fff" }}
+              style={{ background: COLOR.ink, color: "#fff" }}
             >
               <Plus size={16} strokeWidth={2.25} />
               <span className="text-sm" style={{ fontWeight: 700 }}>Create event</span>
@@ -346,9 +346,9 @@ export default function App() {
                         width: 42,
                         height: 42,
                         borderRadius: 13,
-                        background: COLOR.navy,
+                        background: COLOR.ink,
                         marginTop: -18,
-                        boxShadow: "0 4px 16px rgba(28,58,110,0.35)",
+                        boxShadow: "0 4px 16px rgba(0,0,0,0.25)",
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "center",
