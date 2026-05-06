@@ -33,7 +33,7 @@ const EMPTY_FORM = {
   distance_from_campus: "",
 };
 
-export default function AdminPage({ user }: Props) {
+export default function AdminPage({ user: _user }: Props) {
   const { places, loading } = usePlaces();
   const [showForm, setShowForm] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);

@@ -53,28 +53,14 @@ export function useSessions(user: User | null) {
 
   useEffect(() => { refresh(); }, [refresh]);
 
-  // Realtime: only the Sessions listing page should subscribe.
-  // Use a singleton approach — only subscribe if no channel is live yet.
-  // This prevents crashes when multiple hook instances mount simultaneously.
-  const subscribeRealtime = (userId: string) => {
-    // Remove any stale channels for this user first
-    supabase.getChannels()
-      .filter((c) => c.topic.startsWith(`realtime:sessions-rt-${userId}`))
-      .forEach((c) => supabase.removeChannel(c));
-
-    return supabase
-      .channel(`sessions-rt-${userId}-${Date.now()}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "rsvps" }, () => refresh())
-      .on("postgres_changes", { event: "*", schema: "public", table: "sessions" }, () => refresh())
-      .subscribe();
-  };
-
+  // Polling: refresh every 30 seconds instead of realtime subscriptions.
+  // Realtime postgres_changes caused "cannot add callbacks after subscribe()" crashes
+  // when multiple useSessions hook instances mounted simultaneously.
   useEffect(() => {
     if (!user) return;
-    const ch = subscribeRealtime(user.id);
-    return () => { supabase.removeChannel(ch); };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.id]);
+    const interval = setInterval(() => { refresh(); }, 30_000);
+    return () => clearInterval(interval);
+  }, [user?.id, refresh]);
 
   async function createSession(input: Partial<Session>) {
     if (!user) return null;

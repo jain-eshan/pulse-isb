@@ -8,11 +8,10 @@ import { Plus, Calendar, MapPin, Users, Flame } from "lucide-react";
 import { useSessions } from "../hooks/useSessions";
 import SessionCard from "../components/SessionCard";
 import EmptyState from "../components/EmptyState";
-import CoverBanner, { coverTheme } from "../components/CoverBanner";
+import CoverBanner from "../components/CoverBanner";
 import SectionPill from "../components/SectionPill";
-import { sectionByCode } from "../lib/sections";
 import type { User, Session, EventCategory } from "../types";
-import { COLOR, FONT, EVENT_CATEGORIES, SUBCATEGORIES, CATEGORY_COLOR } from "../lib/pulseTheme";
+import { COLOR, FONT, EVENT_CATEGORIES, SUBCATEGORIES } from "../lib/pulseTheme";
 import { tap } from "../lib/haptics";
 
 type Props = {
