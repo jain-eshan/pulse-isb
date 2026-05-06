@@ -76,8 +76,14 @@ export default function SessionNew({ user, onDone, prefillVenue, editSession }: 
     const { error } = await supabase.storage
       .from("session-covers")
       .upload(path, coverFile, { upsert: true });
-    if (error) return undefined;
+    if (error) {
+      console.error("[uploadCover] upload failed:", error.message);
+      // Surface error to user instead of silently dropping the image
+      setErr(`Image upload failed: ${error.message}`);
+      return undefined;
+    }
     const { data } = supabase.storage.from("session-covers").getPublicUrl(path);
+    console.log("[uploadCover] publicUrl:", data.publicUrl);
     return data.publicUrl;
   }
 
@@ -95,7 +101,7 @@ export default function SessionNew({ user, onDone, prefillVenue, editSession }: 
       const visible_to_ogsgs =
         visibility === "ogsg" && user.section && user.ogsg ? [`${user.section}-${user.ogsg}`] : [];
 
-      await createSession({
+      const payload = {
         title: title.trim(),
         description: description.trim() || undefined,
         starts_at: new Date(startsAt).toISOString(),
@@ -107,10 +113,14 @@ export default function SessionNew({ user, onDone, prefillVenue, editSession }: 
         cover_image_url,
         visible_to_sections,
         visible_to_ogsgs,
-      } as Partial<Session>);
+      };
+      console.log("[SessionNew] creating session:", payload);
+      await createSession(payload as Partial<Session>);
       onDone();
-    } catch {
-      setErr("Something went wrong. Try again.");
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : "Unknown error";
+      console.error("[SessionNew] createSession failed:", msg);
+      setErr(`Something went wrong: ${msg}`);
       setBusy(false);
     }
   }
