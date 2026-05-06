@@ -2,7 +2,6 @@
  * SessionCard — Luma-inspired horizontal layout
  * Cover image (or gradient fallback) on the left, event info on the right.
  */
-import { motion } from "framer-motion";
 import { format, isToday, isTomorrow } from "date-fns";
 import { MapPin, Users, Check, Calendar } from "lucide-react";
 import type { Session } from "../types";
@@ -37,11 +36,10 @@ export default function SessionCard({ session, onClick }: Props) {
   const catColor = CATEGORY_COLOR[cat];
 
   return (
-    <motion.button
+    <button
       onClick={onClick}
-      whileTap={{ scale: 0.985 }}
       className="card card-hover text-left w-full"
-      style={{ overflow: "hidden", padding: 0 }}
+      style={{ overflow: "hidden", padding: 0, cursor: "pointer" }}
     >
       <div style={{ display: "flex", minHeight: 120 }}>
         {/* Cover image / gradient thumbnail */}
@@ -241,6 +239,6 @@ export default function SessionCard({ session, onClick }: Props) {
           </div>
         </div>
       </div>
-    </motion.button>
+    </button>
   );
 }

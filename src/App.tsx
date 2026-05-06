@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { Component, useEffect, useState } from "react";
+import type { ErrorInfo, ReactNode } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Calendar, Compass, MapPin, Plus, User as UserIcon } from "lucide-react";
 import { useAuth } from "./hooks/useAuth";
@@ -17,6 +18,41 @@ import Logo, { LogoMark } from "./components/Logo";
 import { COLOR } from "./lib/pulseTheme";
 import { tap } from "./lib/haptics";
 import type { Session } from "./types";
+
+/* ─── Error Boundary for modal crash isolation ─── */
+class ModalErrorBoundary extends Component<
+  { children: ReactNode; onError: () => void },
+  { hasError: boolean; error: string }
+> {
+  state = { hasError: false, error: "" };
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error: error.message };
+  }
+  componentDidCatch(error: Error, info: ErrorInfo) {
+    console.error("[ModalErrorBoundary] crash:", error, info.componentStack);
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{ padding: 32, textAlign: "center" }}>
+          <p style={{ color: "#B91C1C", fontWeight: 700, marginBottom: 8 }}>
+            Something went wrong loading this event.
+          </p>
+          <p style={{ color: "#6B7280", fontSize: 13, marginBottom: 16 }}>
+            {this.state.error}
+          </p>
+          <button
+            onClick={() => { this.setState({ hasError: false, error: "" }); this.props.onError(); }}
+            style={{ padding: "8px 20px", borderRadius: 10, background: "#1C3A6E", color: "#fff", border: "none", cursor: "pointer", fontSize: 13, fontWeight: 600 }}
+          >
+            Close
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 type Tab = "sessions" | "discover" | "campus" | "profile";
 
@@ -64,6 +100,14 @@ export default function App() {
     return () => window.removeEventListener("resize", handler);
   }, []);
 
+  // Close drawer on Escape
+  useEffect(() => {
+    if (!openSession) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setOpenSession(null); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [openSession]);
+
   const tab: Tab = PATH_TO_TAB[location.pathname] ?? "sessions";
 
   // Deep-link: ?session=<id>
@@ -108,7 +152,7 @@ export default function App() {
       onDone={() => { setCreating(false); setEditingSession(null); setPrefillVenue(undefined); }}
     />
   ) : tab === "sessions" ? (
-    <Sessions user={user} onOpen={setOpenSession} onCreate={() => setCreating(true)} />
+    <Sessions user={user} onOpen={(s) => { console.log("[App] onOpen fired, session:", s.id, s.title); setOpenSession(s); }} onCreate={() => setCreating(true)} />
   ) : tab === "discover" ? (
     <Home
       user={user}
@@ -194,79 +238,80 @@ export default function App() {
         {bgPage}
       </main>
 
-      {/* Session detail modal / bottom sheet */}
+      {/* Session detail — right-side drawer (v3) */}
       {openSession && (
-        <>
+        <div style={{ position: "fixed", inset: 0, zIndex: 200 }}>
           {/* Backdrop */}
           <div
             onClick={() => setOpenSession(null)}
             style={{
-              position: "fixed",
+              position: "absolute",
               inset: 0,
-              background: "rgba(0,0,0,0.45)",
-              backdropFilter: "blur(6px)",
-              WebkitBackdropFilter: "blur(6px)",
-              zIndex: 200,
+              background: "rgba(0,0,0,0.4)",
+              animation: "fadeIn 0.2s ease",
             }}
           />
-
-          {isMobile ? (
-            /* Mobile: bottom sheet */
+          {/* Drawer panel */}
+          <div
+            style={{
+              position: "absolute",
+              top: 0,
+              right: 0,
+              bottom: 0,
+              width: isMobile ? "100%" : "50%",
+              minWidth: isMobile ? "100%" : "560px",
+              maxWidth: "100%",
+              background: COLOR.bg,
+              boxShadow: "-12px 0 40px rgba(0,0,0,0.15)",
+              animation: "slideInRight 0.3s cubic-bezier(0.32, 0.72, 0, 1)",
+              display: "flex",
+              flexDirection: "column",
+              overflow: "hidden",
+            }}
+          >
+            {/* Top bar */}
             <div
               style={{
-                position: "fixed",
-                left: 0,
-                right: 0,
-                bottom: 0,
-                height: "90vh",
-                borderRadius: "20px 20px 0 0",
-                background: COLOR.bg,
-                zIndex: 201,
                 display: "flex",
-                flexDirection: "column",
-                overflow: "hidden",
-                boxShadow: "0 -8px 48px rgba(0,0,0,0.18)",
+                alignItems: "center",
+                justifyContent: "space-between",
+                padding: "12px 16px",
+                borderBottom: `1px solid ${COLOR.borderLight}`,
+                flexShrink: 0,
               }}
             >
-              {/* Drag handle */}
-              <div style={{ display: "flex", justifyContent: "center", paddingTop: 12, paddingBottom: 4, flexShrink: 0 }}>
-                <div style={{ width: 36, height: 4, borderRadius: 2, background: COLOR.borderLight }} />
-              </div>
+              <button
+                onClick={() => setOpenSession(null)}
+                style={{
+                  width: 32,
+                  height: 32,
+                  borderRadius: 8,
+                  border: `1px solid ${COLOR.border}`,
+                  background: "transparent",
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: 16,
+                }}
+                aria-label="Close"
+              >
+                ✕
+              </button>
+              <span style={{ fontSize: 12, color: COLOR.ink3, fontWeight: 500 }}>Event Details</span>
+              <div style={{ width: 32 }} />
+            </div>
+            {/* Content */}
+            <ModalErrorBoundary onError={() => setOpenSession(null)}>
               <SessionDetail
                 session={openSession}
                 user={user}
                 onBack={() => setOpenSession(null)}
                 onEdit={(s) => { setOpenSession(null); setEditingSession(s); }}
               />
-            </div>
-          ) : (
-            /* Desktop: centered modal */
-            <div
-              style={{
-                position: "fixed",
-                top: "50%",
-                left: "50%",
-                transform: "translate(-50%, -50%)",
-                width: "min(580px, 90vw)",
-                height: "88vh",
-                borderRadius: 20,
-                background: COLOR.bg,
-                zIndex: 201,
-                display: "flex",
-                flexDirection: "column",
-                overflow: "hidden",
-                boxShadow: "0 24px 80px rgba(0,0,0,0.22)",
-              }}
-            >
-              <SessionDetail
-                session={openSession}
-                user={user}
-                onBack={() => setOpenSession(null)}
-                onEdit={(s) => { setOpenSession(null); setEditingSession(s); }}
-              />
-            </div>
-          )}
-        </>
+            </ModalErrorBoundary>
+          </div>
+        </div>
       )}
 
       {/* Mobile bottom nav */}
