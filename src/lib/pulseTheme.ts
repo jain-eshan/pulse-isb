@@ -4,13 +4,13 @@
  */
 
 export const COLOR = {
-  // Surfaces — clean white foundation
-  bg:          "#FFFFFF",
-  bgSoft:      "#F9FAFB",      // section/card backgrounds
+  // Surfaces — v3 warm neutral
+  bg:          "#FAFAFA",
+  bgSoft:      "#F5F5F3",      // section/card backgrounds
   surface:     "#FFFFFF",
-  border:      "#E5E7EB",      // gray-200
-  borderLight: "#F3F4F6",      // gray-100
-  divider:     "#F3F4F6",
+  border:      "#E5E5E3",      // warm gray
+  borderLight: "#F0F0EE",      // warm gray-100
+  divider:     "#F0F0EE",
 
   // ISB navy — primary brand
   navy:     "#1C3A6E",
@@ -21,10 +21,13 @@ export const COLOR = {
   amber:     "#C47D0E",
   amberTint: "#FDF4E0",
 
-  // Text — sharper hierarchy
-  ink:  "#111827",             // gray-900
-  ink2: "#6B7280",             // gray-500
-  ink3: "#9CA3AF",             // gray-400
+  // Accent — v3 warm orange-red
+  accent:  "#FF5733",
+
+  // Text — v3 sharper hierarchy
+  ink:  "#111111",             // near-black
+  ink2: "#555555",             // mid gray
+  ink3: "#999999",             // light gray
 
   // Budget semantic
   budget: {

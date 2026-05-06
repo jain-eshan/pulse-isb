@@ -150,73 +150,74 @@ export default function Sessions({ user, onOpen, onCreate }: Props) {
           ))}
         </div>
 
-        {/* Category tiles — BookMyShow/Zomato style */}
+        {/* Category segmented control — v3 */}
         <div
-          className="mt-4 flex gap-2.5"
-          style={{ overflowX: "auto", paddingBottom: 4, scrollbarWidth: "none" }}
+          className="mt-4 flex gap-1"
+          style={{
+            background: "#F0F0EE",
+            borderRadius: 12,
+            padding: 4,
+          }}
         >
-          <CategoryTile
-            label="All"
-            emoji="✨"
-            active={!category}
-            color={COLOR.navy}
-            onClick={() => { tap(); setCategory(null); setSubcategory(null); }}
-          />
-          {EVENT_CATEGORIES.map((cat) => {
-            const pal = CATEGORY_COLOR[cat.toLowerCase()];
-            const emoji = cat === "Sports" ? "🏅" : cat === "Social" ? "🎉" : "💼";
-            return (
-              <CategoryTile
-                key={cat}
-                label={cat}
-                emoji={emoji}
-                active={category === cat}
-                color={pal?.accent ?? COLOR.navy}
-                onClick={() => {
-                  tap();
-                  setCategory(category === cat ? null : cat);
-                  setSubcategory(null);
-                }}
-              />
-            );
-          })}
+          {[{ label: "All", value: null as EventCategory | null }, ...EVENT_CATEGORIES.map((c) => ({ label: c, value: c as EventCategory | null }))].map(
+            ({ label, value }) => {
+              const active = category === value;
+              return (
+                <button
+                  key={label}
+                  onClick={() => { tap(); setCategory(active ? null : value); setSubcategory(null); }}
+                  style={{
+                    flex: 1,
+                    padding: "8px 0",
+                    borderRadius: 10,
+                    fontSize: 13,
+                    fontWeight: 600,
+                    fontFamily: FONT.sans,
+                    border: "none",
+                    cursor: "pointer",
+                    transition: "all 0.15s",
+                    background: active ? "#fff" : "transparent",
+                    color: active ? COLOR.ink : COLOR.ink3,
+                    boxShadow: active ? "0 1px 3px rgba(0,0,0,0.1)" : "none",
+                  }}
+                >
+                  {label}
+                </button>
+              );
+            }
+          )}
         </div>
 
-        {/* Subcategory chips — appear when a category is selected */}
+        {/* Subcategory pills — appear when a category is selected */}
         {activeSubcats.length > 0 && (
           <div
-            className="mt-2.5 flex gap-2"
+            className="mt-3 flex gap-2"
             style={{ overflowX: "auto", paddingBottom: 4, scrollbarWidth: "none" }}
           >
-            {activeSubcats.map((sub) => (
-              <button
-                key={sub}
-                onClick={() => { tap(); setSubcategory(subcategory === sub ? null : sub); }}
-                style={{
-                  flexShrink: 0,
-                  padding: "5px 12px",
-                  borderRadius: 99,
-                  fontSize: 12,
-                  fontWeight: 500,
-                  background: subcategory === sub
-                    ? (CATEGORY_COLOR[category!.toLowerCase()]?.accent ?? COLOR.navy) + "14"
-                    : COLOR.bgSoft,
-                  color: subcategory === sub
-                    ? CATEGORY_COLOR[category!.toLowerCase()]?.accent ?? COLOR.navy
-                    : COLOR.ink2,
-                  border: `1px solid ${
-                    subcategory === sub
-                      ? (CATEGORY_COLOR[category!.toLowerCase()]?.accent ?? COLOR.navy) + "40"
-                      : COLOR.borderLight
-                  }`,
-                  fontFamily: FONT.sans,
-                  cursor: "pointer",
-                  transition: "all 0.15s",
-                }}
-              >
-                {sub}
-              </button>
-            ))}
+            {activeSubcats.map((sub) => {
+              const active = subcategory === sub;
+              return (
+                <button
+                  key={sub}
+                  onClick={() => { tap(); setSubcategory(active ? null : sub); }}
+                  style={{
+                    flexShrink: 0,
+                    padding: "6px 14px",
+                    borderRadius: 99,
+                    fontSize: 12,
+                    fontWeight: 600,
+                    background: active ? COLOR.ink : "#fff",
+                    color: active ? "#fff" : COLOR.ink2,
+                    border: `1px solid ${active ? COLOR.ink : COLOR.border}`,
+                    fontFamily: FONT.sans,
+                    cursor: "pointer",
+                    transition: "all 0.15s",
+                  }}
+                >
+                  {sub}
+                </button>
+              );
+            })}
           </div>
         )}
       </header>
@@ -455,54 +456,6 @@ function FeaturedCard({ session, onOpen }: { session: Session; onOpen: () => voi
 }
 
 /* ─── Sub-components ─── */
-function CategoryTile({
-  label,
-  emoji,
-  active,
-  color,
-  onClick,
-}: {
-  label: string;
-  emoji: string;
-  active: boolean;
-  color: string;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      style={{
-        flexShrink: 0,
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: 5,
-        width: 74,
-        padding: "11px 8px 10px",
-        borderRadius: 14,
-        background: active ? color : COLOR.surface,
-        border: `1.5px solid ${active ? color : COLOR.borderLight}`,
-        cursor: "pointer",
-        transition: "all 0.15s",
-      }}
-    >
-      <span style={{ fontSize: 22, lineHeight: 1 }}>{emoji}</span>
-      <span
-        style={{
-          fontSize: 11,
-          fontWeight: 700,
-          color: active ? "#fff" : COLOR.ink2,
-          fontFamily: FONT.sans,
-          lineHeight: 1,
-        }}
-      >
-        {label}
-      </span>
-    </button>
-  );
-}
-
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
     <p
