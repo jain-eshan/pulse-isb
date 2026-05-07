@@ -93,6 +93,18 @@ export default function App() {
 
   const [openSession, setOpenSession] = useState<Session | null>(null);
   const [drawerExpanded, setDrawerExpanded] = useState(false);
+
+  // Wrap open/close to sync URL deep-link
+  function openSessionDrawer(s: Session) {
+    setOpenSession(s);
+    setDrawerExpanded(false);
+    window.history.replaceState({}, "", `/?session=${s.id}`);
+  }
+  function closeDrawer() {
+    setOpenSession(null);
+    setDrawerExpanded(false);
+    window.history.replaceState({}, "", "/");
+  }
   const [creating, setCreating] = useState(false);
   const [editingSession, setEditingSession] = useState<Session | null>(null);
   const [prefillVenue, setPrefillVenue] = useState<string | undefined>();
@@ -107,7 +119,7 @@ export default function App() {
   // Close drawer on Escape
   useEffect(() => {
     if (!openSession) return;
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setOpenSession(null); };
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") closeDrawer(); };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [openSession]);
@@ -149,7 +161,7 @@ export default function App() {
 
   // Background page
   const bgPage = tab === "sessions" ? (
-    <Sessions user={user} onOpen={(s) => { console.log("[App] onOpen fired, session:", s.id, s.title); setOpenSession(s); }} onCreate={() => setCreating(true)} />
+    <Sessions user={user} onOpen={(s) => { console.log("[App] onOpen fired, session:", s.id, s.title); openSessionDrawer(s); }} onCreate={() => setCreating(true)} />
   ) : tab === "discover" ? (
     <Home
       user={user}
@@ -161,7 +173,7 @@ export default function App() {
       user={user}
       onSignOut={signOut}
       onToggleLocation={(v) => updateUser({ location_sharing: v })}
-      onOpenSession={setOpenSession}
+      onOpenSession={openSessionDrawer}
       onEditSession={(s) => setEditingSession(s)}
       onUpdateProfile={async (updates) => { await updateUser(updates); }}
     />
@@ -177,7 +189,7 @@ export default function App() {
   ) : tab === "admin" && user.is_admin ? (
     <AdminPage user={user} />
   ) : (
-    <Sessions user={user} onOpen={setOpenSession} onCreate={() => setCreating(true)} />
+    <Sessions user={user} onOpen={openSessionDrawer} onCreate={() => setCreating(true)} />
   );
 
   function handleTabClick(next: Tab) {
@@ -257,11 +269,11 @@ export default function App() {
 
       {/* Session detail — right-side drawer (v3) */}
       {openSession && (
-        <div style={{ position: "fixed", inset: 0, zIndex: 200 }}>
-          {/* Backdrop — hidden when expanded (no dimming behind full-screen) */}
+        <div style={{ position: "fixed", top: 0, right: 0, bottom: 0, left: 0, zIndex: 200 }}>
+          {/* Backdrop */}
           {!drawerExpanded && (
             <div
-              onClick={() => { setOpenSession(null); setDrawerExpanded(false); }}
+              onClick={closeDrawer}
               style={{
                 position: "absolute",
                 inset: 0,
@@ -270,20 +282,23 @@ export default function App() {
               }}
             />
           )}
-          {/* Drawer panel */}
+          {/* Drawer panel — sidebar stays visible when expanded on desktop */}
           <div
             style={{
               position: "absolute",
               top: 0,
               right: 0,
               bottom: 0,
-              // Expanded = full viewport. Normal = 50% desktop / 100% mobile
-              width: drawerExpanded ? "100%" : (isMobile ? "100%" : "50%"),
-              minWidth: drawerExpanded ? "100%" : (isMobile ? "100%" : "560px"),
+              left: drawerExpanded && !isMobile ? "14rem" : "auto",
+              width: drawerExpanded
+                ? (isMobile ? "100%" : "auto")
+                : (isMobile ? "100%" : "50%"),
+              minWidth: !drawerExpanded && !isMobile ? "560px" : undefined,
               maxWidth: "100%",
               background: COLOR.bg,
               boxShadow: drawerExpanded ? "none" : "-12px 0 40px rgba(0,0,0,0.15)",
-              transition: "width 0.25s cubic-bezier(0.32,0.72,0,1)",
+              borderLeft: drawerExpanded && !isMobile ? `1px solid ${COLOR.borderLight}` : "none",
+              transition: "all 0.25s cubic-bezier(0.32,0.72,0,1)",
               display: "flex",
               flexDirection: "column",
               overflow: "hidden",
@@ -302,7 +317,7 @@ export default function App() {
             >
               {/* Back / close */}
               <button
-                onClick={() => { setOpenSession(null); setDrawerExpanded(false); }}
+                onClick={closeDrawer}
                 style={{ width: 34, height: 34, borderRadius: 9, border: `1px solid ${COLOR.border}`, background: "transparent", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
                 aria-label="Close"
               >
@@ -313,7 +328,7 @@ export default function App() {
 
               {/* Expand + Share */}
               <div style={{ display: "flex", gap: 6 }}>
-                {/* Share — copies deep-link to clipboard, native share on mobile */}
+                {/* Share — deep-link URL */}
                 <button
                   onClick={async () => {
                     if (!openSession) return;
@@ -322,7 +337,6 @@ export default function App() {
                       await navigator.share({ title: openSession.title, url }).catch(() => {});
                     } else {
                       await navigator.clipboard?.writeText(url);
-                      // Brief visual feedback via title attr — no toast needed
                     }
                   }}
                   style={{ width: 34, height: 34, borderRadius: 9, border: `1px solid ${COLOR.border}`, background: "transparent", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
@@ -330,7 +344,7 @@ export default function App() {
                 >
                   <Share2 size={15} color={COLOR.ink2} />
                 </button>
-                {/* Expand / collapse — full-screen within app, sidebar hidden */}
+                {/* Expand / collapse — fills main area, sidebar stays */}
                 <button
                   onClick={() => setDrawerExpanded((v) => !v)}
                   style={{ width: 34, height: 34, borderRadius: 9, border: `1px solid ${COLOR.border}`, background: drawerExpanded ? COLOR.bgSoft : "transparent", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
@@ -341,12 +355,12 @@ export default function App() {
               </div>
             </div>
             {/* Content */}
-            <ModalErrorBoundary onError={() => { setOpenSession(null); setDrawerExpanded(false); }}>
+            <ModalErrorBoundary onError={closeDrawer}>
               <SessionDetail
                 session={openSession}
                 user={user}
-                onBack={() => { setOpenSession(null); setDrawerExpanded(false); }}
-                onEdit={(s) => { setOpenSession(null); setDrawerExpanded(false); setEditingSession(s); }}
+                onBack={closeDrawer}
+                onEdit={(s) => { closeDrawer(); setEditingSession(s); }}
               />
             </ModalErrorBoundary>
           </div>
