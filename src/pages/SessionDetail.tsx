@@ -6,7 +6,6 @@
 import { useEffect, useState } from "react";
 import { format, isToday, isTomorrow } from "date-fns";
 import {
-  ArrowLeft,
   MapPin,
   Share2,
   ExternalLink,
@@ -46,7 +45,7 @@ function isOnlineLink(venue?: string): boolean {
   return v.includes("zoom.us") || v.includes("meet.google.com") || v.includes("teams.microsoft.com") || v.startsWith("http");
 }
 
-export default function SessionDetail({ session, user, onBack, onEdit }: Props) {
+export default function SessionDetail({ session, user, onBack: _onBack, onEdit }: Props) {
   const { rsvp } = useSessions(user);
   const [attendees, setAttendees] = useState<Attendee[]>([]);
   const [busy, setBusy] = useState(false);
@@ -161,43 +160,22 @@ export default function SessionDetail({ session, user, onBack, onEdit }: Props) 
 
   return (
     <div style={{ flex: 1, minHeight: 0, position: "relative", background: COLOR.bg, display: "flex", flexDirection: "column" }}>
-      {/* Floating back + edit */}
-      <div
-        style={{
-          position: "absolute",
-          top: 0,
-          left: 0,
-          right: 0,
-          zIndex: 80,
-          padding: "16px 16px 10px",
-          pointerEvents: "none",
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-        }}
-      >
-        <button
-          onClick={() => { tap(); onBack(); }}
+      {/* Floating edit button (top-right, over cover) */}
+      {isCreator && onEdit && (
+        <div
           style={{
-            pointerEvents: "all",
+            position: "absolute",
+            top: 0,
+            left: 0,
+            right: 0,
+            zIndex: 80,
+            padding: "16px 16px 10px",
+            pointerEvents: "none",
             display: "flex",
+            justifyContent: "flex-end",
             alignItems: "center",
-            gap: 6,
-            background: "rgba(255,255,255,0.92)",
-            backdropFilter: "blur(12px)",
-            border: `1px solid ${COLOR.border}`,
-            borderRadius: 99,
-            padding: "7px 14px 7px 10px",
-            cursor: "pointer",
-            color: COLOR.ink,
-            fontSize: 13,
-            fontWeight: 600,
-            boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
-            fontFamily: FONT.sans,
           }}
         >
-          <ArrowLeft size={14} /> Back
-        </button>
         {isCreator && onEdit && (
           <button
             onClick={() => { tap(); onEdit(session); }}
@@ -222,7 +200,8 @@ export default function SessionDetail({ session, user, onBack, onEdit }: Props) 
             <Edit3 size={13} /> Edit
           </button>
         )}
-      </div>
+        </div>
+      )}
 
       <div style={{ flex: 1, overflowY: "auto", paddingBottom: 16 }}>
         {/* Cover image or gradient */}

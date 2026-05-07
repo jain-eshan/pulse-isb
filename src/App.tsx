@@ -92,6 +92,7 @@ export default function App() {
   const location = useLocation();
 
   const [openSession, setOpenSession] = useState<Session | null>(null);
+  const [drawerExpanded, setDrawerExpanded] = useState(false);
   const [creating, setCreating] = useState(false);
   const [editingSession, setEditingSession] = useState<Session | null>(null);
   const [prefillVenue, setPrefillVenue] = useState<string | undefined>();
@@ -257,16 +258,18 @@ export default function App() {
       {/* Session detail — right-side drawer (v3) */}
       {openSession && (
         <div style={{ position: "fixed", inset: 0, zIndex: 200 }}>
-          {/* Backdrop */}
-          <div
-            onClick={() => setOpenSession(null)}
-            style={{
-              position: "absolute",
-              inset: 0,
-              background: "rgba(0,0,0,0.4)",
-              animation: "fadeIn 0.2s ease",
-            }}
-          />
+          {/* Backdrop — hidden when expanded (no dimming behind full-screen) */}
+          {!drawerExpanded && (
+            <div
+              onClick={() => { setOpenSession(null); setDrawerExpanded(false); }}
+              style={{
+                position: "absolute",
+                inset: 0,
+                background: "rgba(0,0,0,0.4)",
+                animation: "fadeIn 0.2s ease",
+              }}
+            />
+          )}
           {/* Drawer panel */}
           <div
             style={{
@@ -274,12 +277,13 @@ export default function App() {
               top: 0,
               right: 0,
               bottom: 0,
-              width: isMobile ? "100%" : "50%",
-              minWidth: isMobile ? "100%" : "560px",
+              // Expanded = full viewport. Normal = 50% desktop / 100% mobile
+              width: drawerExpanded ? "100%" : (isMobile ? "100%" : "50%"),
+              minWidth: drawerExpanded ? "100%" : (isMobile ? "100%" : "560px"),
               maxWidth: "100%",
               background: COLOR.bg,
-              boxShadow: "-12px 0 40px rgba(0,0,0,0.15)",
-              animation: "slideInRight 0.3s cubic-bezier(0.32, 0.72, 0, 1)",
+              boxShadow: drawerExpanded ? "none" : "-12px 0 40px rgba(0,0,0,0.15)",
+              transition: "width 0.25s cubic-bezier(0.32,0.72,0,1)",
               display: "flex",
               flexDirection: "column",
               overflow: "hidden",
@@ -298,7 +302,7 @@ export default function App() {
             >
               {/* Back / close */}
               <button
-                onClick={() => setOpenSession(null)}
+                onClick={() => { setOpenSession(null); setDrawerExpanded(false); }}
                 style={{ width: 34, height: 34, borderRadius: 9, border: `1px solid ${COLOR.border}`, background: "transparent", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
                 aria-label="Close"
               >
@@ -309,43 +313,40 @@ export default function App() {
 
               {/* Expand + Share */}
               <div style={{ display: "flex", gap: 6 }}>
+                {/* Share — copies deep-link to clipboard, native share on mobile */}
                 <button
-                  onClick={() => {
-                    if (openSession) {
-                      const url = `${window.location.origin}/?session=${openSession.id}`;
-                      if (navigator.share) {
-                        navigator.share({ title: openSession.title, url });
-                      } else {
-                        navigator.clipboard?.writeText(url);
-                      }
+                  onClick={async () => {
+                    if (!openSession) return;
+                    const url = `${window.location.origin}/?session=${openSession.id}`;
+                    if (navigator.share) {
+                      await navigator.share({ title: openSession.title, url }).catch(() => {});
+                    } else {
+                      await navigator.clipboard?.writeText(url);
+                      // Brief visual feedback via title attr — no toast needed
                     }
                   }}
                   style={{ width: 34, height: 34, borderRadius: 9, border: `1px solid ${COLOR.border}`, background: "transparent", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
-                  title="Share event"
+                  title="Copy event link"
                 >
                   <Share2 size={15} color={COLOR.ink2} />
                 </button>
+                {/* Expand / collapse — full-screen within app, sidebar hidden */}
                 <button
-                  onClick={() => {
-                    if (openSession) {
-                      const url = `${window.location.origin}/?session=${openSession.id}`;
-                      window.open(url, "_blank");
-                    }
-                  }}
-                  style={{ width: 34, height: 34, borderRadius: 9, border: `1px solid ${COLOR.border}`, background: "transparent", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
-                  title="Open full page"
+                  onClick={() => setDrawerExpanded((v) => !v)}
+                  style={{ width: 34, height: 34, borderRadius: 9, border: `1px solid ${COLOR.border}`, background: drawerExpanded ? COLOR.bgSoft : "transparent", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
+                  title={drawerExpanded ? "Exit full screen" : "Full screen"}
                 >
                   <Maximize2 size={14} color={COLOR.ink2} />
                 </button>
               </div>
             </div>
             {/* Content */}
-            <ModalErrorBoundary onError={() => setOpenSession(null)}>
+            <ModalErrorBoundary onError={() => { setOpenSession(null); setDrawerExpanded(false); }}>
               <SessionDetail
                 session={openSession}
                 user={user}
-                onBack={() => setOpenSession(null)}
-                onEdit={(s) => { setOpenSession(null); setEditingSession(s); }}
+                onBack={() => { setOpenSession(null); setDrawerExpanded(false); }}
+                onEdit={(s) => { setOpenSession(null); setDrawerExpanded(false); setEditingSession(s); }}
               />
             </ModalErrorBoundary>
           </div>
