@@ -3,8 +3,8 @@
  * Only visible if user.is_admin = true.
  * Add / edit / delete places from a simple form.
  */
-import { useState } from "react";
-import { Plus, Trash2, Edit3, X, Check, MapPin } from "lucide-react";
+import { useState, useRef } from "react";
+import { Plus, Trash2, Edit3, X, Check, MapPin, Upload, ImageIcon } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import { usePlaces, type DBPlace } from "../hooks/usePlaces";
 import type { User } from "../types";
@@ -38,6 +38,10 @@ export default function AdminPage({ user: _user }: Props) {
   const [showForm, setShowForm] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState({ ...EMPTY_FORM });
+  const [coverFile, setCoverFile] = useState<File | null>(null);
+  const [coverPreview, setCoverPreview] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState<string | null>(null);
   const [msg, setMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
@@ -46,6 +50,8 @@ export default function AdminPage({ user: _user }: Props) {
     tap();
     setEditId(null);
     setForm({ ...EMPTY_FORM });
+    setCoverFile(null);
+    setCoverPreview(null);
     setShowForm(true);
   }
 
@@ -64,7 +70,33 @@ export default function AdminPage({ user: _user }: Props) {
       review_count: p.review_count ? String(p.review_count) : "",
       distance_from_campus: p.distance_from_campus ?? "",
     });
+    setCoverFile(null);
+    setCoverPreview(p.image_url ?? null);
     setShowForm(true);
+  }
+
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setCoverFile(file);
+    setCoverPreview(URL.createObjectURL(file));
+  }
+
+  async function uploadCoverImage(): Promise<string | null> {
+    if (!coverFile) return form.image_url || null;
+    setUploading(true);
+    const ext = coverFile.name.split(".").pop() ?? "jpg";
+    const path = `place-covers/${Date.now()}.${ext}`;
+    const { error } = await supabase.storage
+      .from("session-covers")
+      .upload(path, coverFile, { upsert: true });
+    setUploading(false);
+    if (error) {
+      setMsg({ type: "err", text: `Image upload failed: ${error.message}` });
+      return null;
+    }
+    const { data } = supabase.storage.from("session-covers").getPublicUrl(path);
+    return data.publicUrl;
   }
 
   async function handleSave() {
@@ -73,6 +105,7 @@ export default function AdminPage({ user: _user }: Props) {
     setSaving(true);
     setMsg(null);
     try {
+      const image_url = await uploadCoverImage();
       const payload = {
         name: form.name.trim(),
         category: form.category,
@@ -80,7 +113,7 @@ export default function AdminPage({ user: _user }: Props) {
         description: form.description.trim() || null,
         budget: form.budget,
         google_maps_url: form.google_maps_url.trim() || null,
-        image_url: form.image_url.trim() || null,
+        image_url,
         google_rating: form.google_rating ? parseFloat(form.google_rating) : null,
         review_count: form.review_count ? parseInt(form.review_count) : null,
         distance_from_campus: form.distance_from_campus.trim() || null,
@@ -280,8 +313,42 @@ export default function AdminPage({ user: _user }: Props) {
                 <input style={inputStyle} value={form.google_maps_url} onChange={(e) => set("google_maps_url", e.target.value)} placeholder="https://maps.app.goo.gl/..." />
               </FormField>
 
-              <FormField label="Cover Image URL">
-                <input style={inputStyle} value={form.image_url} onChange={(e) => set("image_url", e.target.value)} placeholder="https://..." />
+              <FormField label="Cover Image">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  style={{ display: "none" }}
+                  onChange={handleFileChange}
+                />
+                {coverPreview ? (
+                  <div style={{ position: "relative", borderRadius: 10, overflow: "hidden", height: 140 }}>
+                    <img src={coverPreview} alt="Cover preview" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                    <button
+                      type="button"
+                      onClick={() => { setCoverFile(null); setCoverPreview(null); set("image_url", ""); }}
+                      style={{ position: "absolute", top: 8, right: 8, background: "rgba(0,0,0,0.6)", border: "none", borderRadius: 6, padding: "4px 8px", color: "#fff", fontSize: 12, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}
+                    >
+                      <X size={12} /> Remove
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      style={{ position: "absolute", bottom: 8, right: 8, background: "rgba(0,0,0,0.6)", border: "none", borderRadius: 6, padding: "4px 8px", color: "#fff", fontSize: 12, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}
+                    >
+                      <Upload size={12} /> Change
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    style={{ ...inputStyle, height: 80, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 6, cursor: "pointer", background: COLOR.bgSoft, border: `1.5px dashed ${COLOR.border}`, color: COLOR.ink2 }}
+                  >
+                    <ImageIcon size={20} strokeWidth={1.5} />
+                    <span style={{ fontSize: 13, fontFamily: FONT.sans }}>Tap to upload image</span>
+                  </button>
+                )}
               </FormField>
 
               <div className="flex gap-3">
@@ -301,7 +368,7 @@ export default function AdminPage({ user: _user }: Props) {
                 disabled={saving}
                 style={{ width: "100%", padding: "13px", borderRadius: 11, background: COLOR.ink, color: "#fff", border: "none", fontSize: 14, fontWeight: 700, fontFamily: FONT.sans, cursor: "pointer", opacity: saving ? 0.6 : 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}
               >
-                <Check size={16} /> {saving ? "Saving…" : (editId ? "Save Changes" : "Add Place")}
+                <Check size={16} /> {uploading ? "Uploading image…" : saving ? "Saving…" : (editId ? "Save Changes" : "Add Place")}
               </button>
             </div>
           </div>
