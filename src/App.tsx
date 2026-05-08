@@ -6,7 +6,7 @@ import { useAuth } from "./hooks/useAuth";
 import { useLocationBroadcast } from "./hooks/useLocation";
 import { useCampusActivity } from "./hooks/useCampusActivity";
 import { supabase } from "./lib/supabase";
-import Login from "./pages/Login";
+import LandingPage from "./pages/LandingPage";
 import Onboarding from "./pages/Onboarding";
 import Sessions from "./pages/Sessions";
 import SessionDetail from "./pages/SessionDetail";
@@ -154,7 +154,7 @@ export default function App() {
     );
   }
 
-  if (!user) return <Login />;
+  if (!user) return <LandingPage />;
   if (!user.onboarded_at) {
     return <Onboarding user={user} onComplete={(updates) => updateUser(updates)} />;
   }
