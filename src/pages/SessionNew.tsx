@@ -62,6 +62,27 @@ export default function SessionNew({ user, onDone, prefillVenue, editSession }: 
   const catColor = category ? CATEGORY_COLOR[category.toLowerCase()] : null;
   const activeGradient = COVER_GRADIENTS.find((g) => g.id === coverGradient) ?? COVER_GRADIENTS[0];
 
+  async function compressImage(file: File, maxPx = 1400, quality = 0.82): Promise<File> {
+    return new Promise((resolve) => {
+      const img = new Image();
+      const url = URL.createObjectURL(file);
+      img.onload = () => {
+        URL.revokeObjectURL(url);
+        const scale = Math.min(1, maxPx / Math.max(img.width, img.height));
+        const w = Math.round(img.width * scale);
+        const h = Math.round(img.height * scale);
+        const canvas = document.createElement("canvas");
+        canvas.width = w; canvas.height = h;
+        canvas.getContext("2d")!.drawImage(img, 0, 0, w, h);
+        canvas.toBlob((blob) => {
+          resolve(blob ? new File([blob], file.name.replace(/\.[^.]+$/, ".jpg"), { type: "image/jpeg" }) : file);
+        }, "image/jpeg", quality);
+      };
+      img.onerror = () => { URL.revokeObjectURL(url); resolve(file); };
+      img.src = url;
+    });
+  }
+
   function handleCoverSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -71,11 +92,11 @@ export default function SessionNew({ user, onDone, prefillVenue, editSession }: 
 
   async function uploadCover(): Promise<string | undefined> {
     if (!coverFile) return coverPreview ?? undefined;
-    const ext = coverFile.name.split(".").pop() ?? "jpg";
-    const path = `${user.id}/${Date.now()}.${ext}`;
+    const compressed = await compressImage(coverFile);
+    const path = `${user.id}/${Date.now()}.jpg`;
     const { error } = await supabase.storage
       .from("session-covers")
-      .upload(path, coverFile, { upsert: true });
+      .upload(path, compressed, { upsert: true });
     if (error) {
       console.error("[uploadCover] upload failed:", error.message);
       // Surface error to user instead of silently dropping the image
@@ -88,8 +109,9 @@ export default function SessionNew({ user, onDone, prefillVenue, editSession }: 
   }
 
   async function handleSubmit() {
-    if (!title.trim()) { setErr("Title is required"); return; }
-    if (!startsAt) { setErr("Start time is required"); return; }
+    if (!title.trim()) { setErr("Event name is required"); return; }
+    if (!startsAt) { setErr("Date & time is required"); return; }
+    if (!category) { setErr("Event type is required — pick Sports, Social, or Professional"); return; }
     tap();
     setBusy(true);
     setErr(null);

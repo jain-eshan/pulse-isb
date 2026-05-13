@@ -4,7 +4,7 @@
  * Add / edit / delete places from a simple form.
  */
 import { useState, useRef } from "react";
-import { Plus, Trash2, Edit3, X, Check, MapPin, Upload, ImageIcon } from "lucide-react";
+import { Plus, Trash2, Edit3, X, Check, MapPin, Upload, ImageIcon, Sparkles, Loader2 } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import { usePlaces, type DBPlace } from "../hooks/usePlaces";
 import type { User } from "../types";
@@ -29,7 +29,6 @@ const EMPTY_FORM = {
   google_maps_url: "",
   image_url: "",
   google_rating: "",
-  review_count: "",
   distance_from_campus: "",
 };
 
@@ -41,6 +40,7 @@ export default function AdminPage({ user: _user }: Props) {
   const [coverFile, setCoverFile] = useState<File | null>(null);
   const [coverPreview, setCoverPreview] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [autoFilling, setAutoFilling] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState<string | null>(null);
@@ -67,12 +67,52 @@ export default function AdminPage({ user: _user }: Props) {
       google_maps_url: p.google_maps_url ?? "",
       image_url: p.image_url ?? "",
       google_rating: p.google_rating ? String(p.google_rating) : "",
-      review_count: p.review_count ? String(p.review_count) : "",
       distance_from_campus: p.distance_from_campus ?? "",
     });
     setCoverFile(null);
     setCoverPreview(p.image_url ?? null);
     setShowForm(true);
+  }
+
+  async function compressImage(file: File, maxPx = 1400, quality = 0.82): Promise<File> {
+    return new Promise((resolve) => {
+      const img = new Image();
+      const url = URL.createObjectURL(file);
+      img.onload = () => {
+        URL.revokeObjectURL(url);
+        const scale = Math.min(1, maxPx / Math.max(img.width, img.height));
+        const w = Math.round(img.width * scale);
+        const h = Math.round(img.height * scale);
+        const canvas = document.createElement("canvas");
+        canvas.width = w; canvas.height = h;
+        canvas.getContext("2d")!.drawImage(img, 0, 0, w, h);
+        canvas.toBlob((blob) => {
+          resolve(blob ? new File([blob], file.name.replace(/\.[^.]+$/, ".jpg"), { type: "image/jpeg" }) : file);
+        }, "image/jpeg", quality);
+      };
+      img.onerror = () => { URL.revokeObjectURL(url); resolve(file); };
+      img.src = url;
+    });
+  }
+
+  async function handleAutoFill() {
+    const mapsUrl = form.google_maps_url.trim();
+    if (!mapsUrl) { setMsg({ type: "err", text: "Paste a Google Maps URL first" }); return; }
+    setAutoFilling(true);
+    setMsg(null);
+    try {
+      const { data, error } = await supabase.functions.invoke("fetch-place-meta", { body: { url: mapsUrl } });
+      if (error) throw new Error(error.message);
+      if (data.name) set("name", data.name);
+      if (data.google_rating) set("google_rating", String(data.google_rating));
+      if (data.distance_from_campus) set("distance_from_campus", data.distance_from_campus);
+      if (data.photo_url) { set("image_url", data.photo_url); setCoverPreview(data.photo_url); }
+      setMsg({ type: "ok", text: "Auto-filled from Google Maps ✓" });
+    } catch (e: unknown) {
+      setMsg({ type: "err", text: e instanceof Error ? e.message : "Auto-fill failed" });
+    } finally {
+      setAutoFilling(false);
+    }
   }
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -85,11 +125,11 @@ export default function AdminPage({ user: _user }: Props) {
   async function uploadCoverImage(): Promise<string | null> {
     if (!coverFile) return form.image_url || null;
     setUploading(true);
-    const ext = coverFile.name.split(".").pop() ?? "jpg";
-    const path = `place-covers/${Date.now()}.${ext}`;
+    const compressed = await compressImage(coverFile);
+    const path = `place-covers/${Date.now()}.jpg`;
     const { error } = await supabase.storage
       .from("session-covers")
-      .upload(path, coverFile, { upsert: true });
+      .upload(path, compressed, { upsert: true });
     setUploading(false);
     if (error) {
       setMsg({ type: "err", text: `Image upload failed: ${error.message}` });
@@ -106,6 +146,8 @@ export default function AdminPage({ user: _user }: Props) {
     setMsg(null);
     try {
       const image_url = await uploadCoverImage();
+      // Abort if user picked a file but upload failed (error already shown in msg)
+      if (coverFile && image_url === null) { setSaving(false); return; }
       const payload = {
         name: form.name.trim(),
         category: form.category,
@@ -115,7 +157,6 @@ export default function AdminPage({ user: _user }: Props) {
         google_maps_url: form.google_maps_url.trim() || null,
         image_url,
         google_rating: form.google_rating ? parseFloat(form.google_rating) : null,
-        review_count: form.review_count ? parseInt(form.review_count) : null,
         distance_from_campus: form.distance_from_campus.trim() || null,
       };
 
@@ -310,7 +351,20 @@ export default function AdminPage({ user: _user }: Props) {
               </FormField>
 
               <FormField label="Google Maps URL">
-                <input style={inputStyle} value={form.google_maps_url} onChange={(e) => set("google_maps_url", e.target.value)} placeholder="https://maps.app.goo.gl/..." />
+                <div style={{ display: "flex", gap: 8 }}>
+                  <input style={{ ...inputStyle, flex: 1 }} value={form.google_maps_url} onChange={(e) => set("google_maps_url", e.target.value)} placeholder="https://maps.app.goo.gl/..." />
+                  <button
+                    type="button"
+                    onClick={handleAutoFill}
+                    disabled={autoFilling}
+                    title="Auto-fill name, rating, distance, and photo from Google Maps"
+                    style={{ padding: "0 14px", borderRadius: 10, background: COLOR.ink, color: "#fff", border: "none", fontSize: 13, fontWeight: 600, fontFamily: FONT.sans, cursor: autoFilling ? "not-allowed" : "pointer", opacity: autoFilling ? 0.7 : 1, display: "flex", alignItems: "center", gap: 5, whiteSpace: "nowrap", flexShrink: 0 }}
+                  >
+                    {autoFilling ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
+                    {autoFilling ? "Fetching…" : "Auto-fill"}
+                  </button>
+                </div>
+                <p style={{ fontSize: 11, color: COLOR.ink3, marginTop: 4, fontFamily: FONT.sans }}>Paste the Maps link and tap Auto-fill to fetch name, rating, distance &amp; photo</p>
               </FormField>
 
               <FormField label="Cover Image">
@@ -351,14 +405,9 @@ export default function AdminPage({ user: _user }: Props) {
                 )}
               </FormField>
 
-              <div className="flex gap-3">
-                <FormField label="Google Rating" style={{ flex: 1 }}>
-                  <input style={inputStyle} type="number" step="0.1" min="1" max="5" value={form.google_rating} onChange={(e) => set("google_rating", e.target.value)} placeholder="4.2" />
-                </FormField>
-                <FormField label="Review Count" style={{ flex: 1 }}>
-                  <input style={inputStyle} type="number" min="0" value={form.review_count} onChange={(e) => set("review_count", e.target.value)} placeholder="120" />
-                </FormField>
-              </div>
+              <FormField label="Google Rating">
+                <input style={inputStyle} type="number" step="0.1" min="1" max="5" value={form.google_rating} onChange={(e) => set("google_rating", e.target.value)} placeholder="4.2 — or use Auto-fill" />
+              </FormField>
             </div>
 
             {/* Footer */}
