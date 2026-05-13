@@ -110,11 +110,17 @@ Deno.serve(async (req) => {
       distance_from_campus = formatDistance(km);
     }
 
-    // First photo
+    // First photo — follow the redirect to get the clean CDN URL (no API key stored in DB)
     let photo_url: string | null = null;
     const photoRef = result.photos?.[0]?.photo_reference;
     if (photoRef) {
-      photo_url = `https://maps.googleapis.com/maps/api/place/photo?maxwidth=1200&photoreference=${photoRef}&key=${GOOGLE_API_KEY}`;
+      const apiPhotoUrl = `https://maps.googleapis.com/maps/api/place/photo?maxwidth=1200&photoreference=${photoRef}&key=${GOOGLE_API_KEY}`;
+      try {
+        const photoRes = await fetch(apiPhotoUrl, { method: "HEAD", redirect: "follow" });
+        photo_url = photoRes.url || apiPhotoUrl;
+      } catch {
+        photo_url = apiPhotoUrl; // fallback to API URL if redirect fails
+      }
     }
 
     return new Response(
