@@ -3,7 +3,7 @@
  * Only visible if user.is_admin = true.
  * Add / edit / delete places from a simple form.
  */
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef } from "react";
 import { Plus, Trash2, Edit3, X, Check, MapPin, Upload, ImageIcon, Sparkles, Loader2 } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import { usePlaces, type DBPlace } from "../hooks/usePlaces";
@@ -11,19 +11,6 @@ import type { User } from "../types";
 import { COLOR, FONT } from "../lib/pulseTheme";
 import { tap } from "../lib/haptics";
 
-// ISB Mohali coordinates for distance calculation
-const ISB_LAT = 30.7046;
-const ISB_LNG = 76.7179;
-const GMAPS_KEY = import.meta.env.VITE_GOOGLE_MAPS_KEY as string;
-
-function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number) {
-  const R = 6371, dLat = (lat2 - lat1) * Math.PI / 180, dLng = (lng2 - lng1) * Math.PI / 180;
-  const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLng / 2) ** 2;
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-}
-function fmtDist(km: number) {
-  return `${Math.round(km * 10) / 10} km · ~${Math.round((km / 30) * 60)} min drive`;
-}
 
 interface Props { user: User; }
 
@@ -56,44 +43,6 @@ export default function AdminPage({ user: _user }: Props) {
   const [uploading, setUploading] = useState(false);
   const [autoFilling, setAutoFilling] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const pickerRef = useRef<HTMLElement>(null);
-
-  // Wire up gmpx-place-picker → auto-fill form on place selection
-  useEffect(() => {
-    const el = pickerRef.current;
-    if (!el) return;
-    const handler = async () => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const place = (el as any).value;
-      if (!place) return;
-      setAutoFilling(true);
-      try {
-        // Name
-        if (place.displayName) set("name", place.displayName);
-        // Rating
-        if (place.rating) set("google_rating", String(place.rating));
-        // Maps URL
-        if (place.googleMapsURI) set("google_maps_url", place.googleMapsURI);
-        // Distance from ISB
-        const loc = place.location;
-        if (loc) {
-          const km = haversineKm(ISB_LAT, ISB_LNG, loc.lat(), loc.lng());
-          set("distance_from_campus", fmtDist(km));
-        }
-        // Photo — fetch first photo via Places API
-        const photos = place.photos;
-        if (photos?.length > 0) {
-          const photoUrl: string = photos[0].getURI({ maxWidth: 1200 });
-          if (photoUrl) { set("image_url", photoUrl); setCoverPreview(photoUrl); }
-        }
-      } finally {
-        setAutoFilling(false);
-      }
-    };
-    el.addEventListener("gmpx-placechange", handler);
-    return () => el.removeEventListener("gmpx-placechange", handler);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [showForm]);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState<string | null>(null);
   const [msg, setMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
@@ -367,27 +316,25 @@ export default function AdminPage({ user: _user }: Props) {
               )}
 
               {/* Google Places search — auto-fills name, rating, distance, photo */}
-              {GMAPS_KEY && (
-                <FormField label="Search on Google Maps">
-                  <gmpx-api-loader key={GMAPS_KEY} solution-channel="GMP_pulse_placepicker_v1" />
-                  <gmpx-place-picker
-                    ref={pickerRef}
-                    placeholder="Type a restaurant, café, or spot name…"
-                    style={{ width: "100%", fontFamily: FONT.sans, fontSize: 14, borderRadius: 10 }}
-                  />
-                  {autoFilling && (
-                    <p style={{ fontSize: 12, color: COLOR.ink3, marginTop: 4, display: "flex", alignItems: "center", gap: 4, fontFamily: FONT.sans }}>
-                      <Loader2 size={12} className="animate-spin" /> Fetching details…
-                    </p>
-                  )}
-                  <p style={{ fontSize: 11, color: COLOR.ink3, marginTop: 4, fontFamily: FONT.sans }}>
-                    Select a place to auto-fill name, rating, distance &amp; photo
-                  </p>
-                </FormField>
-              )}
-
               <FormField label="Name *">
                 <input style={inputStyle} value={form.name} onChange={(e) => set("name", e.target.value)} placeholder="e.g. Pal Dhaba" />
+              </FormField>
+
+              <FormField label="Google Maps URL">
+                <div style={{ display: "flex", gap: 8 }}>
+                  <input style={{ ...inputStyle, flex: 1 }} value={form.google_maps_url} onChange={(e) => set("google_maps_url", e.target.value)} placeholder="https://maps.app.goo.gl/..." />
+                  <button
+                    type="button"
+                    onClick={handleAutoFill}
+                    disabled={autoFilling}
+                    title="Fetch name, rating, distance, and photo from Google Maps"
+                    style={{ padding: "0 14px", borderRadius: 10, background: COLOR.ink, color: "#fff", border: "none", fontSize: 13, fontWeight: 600, fontFamily: FONT.sans, cursor: autoFilling ? "not-allowed" : "pointer", opacity: autoFilling ? 0.7 : 1, display: "flex", alignItems: "center", gap: 5, whiteSpace: "nowrap", flexShrink: 0 }}
+                  >
+                    {autoFilling ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
+                    {autoFilling ? "Fetching…" : "Auto-fill"}
+                  </button>
+                </div>
+                <p style={{ fontSize: 11, color: COLOR.ink3, marginTop: 4, fontFamily: FONT.sans }}>Paste the Maps link → Auto-fill fetches name, rating, distance &amp; photo automatically</p>
               </FormField>
 
               <FormField label="Category">
@@ -415,28 +362,11 @@ export default function AdminPage({ user: _user }: Props) {
               </FormField>
 
               <FormField label="Distance from campus">
-                <input style={inputStyle} value={form.distance_from_campus} onChange={(e) => set("distance_from_campus", e.target.value)} placeholder="e.g. 10 min drive" />
+                <input style={inputStyle} value={form.distance_from_campus} onChange={(e) => set("distance_from_campus", e.target.value)} placeholder="Auto-filled from Maps, or override manually" />
               </FormField>
 
               <FormField label="Description">
                 <textarea style={{ ...inputStyle, resize: "none", lineHeight: 1.6 }} rows={3} value={form.description} onChange={(e) => set("description", e.target.value)} placeholder="Short punchy description..." />
-              </FormField>
-
-              <FormField label="Google Maps URL">
-                <div style={{ display: "flex", gap: 8 }}>
-                  <input style={{ ...inputStyle, flex: 1 }} value={form.google_maps_url} onChange={(e) => set("google_maps_url", e.target.value)} placeholder="https://maps.app.goo.gl/..." />
-                  <button
-                    type="button"
-                    onClick={handleAutoFill}
-                    disabled={autoFilling}
-                    title="Auto-fill name, rating, distance, and photo from Google Maps"
-                    style={{ padding: "0 14px", borderRadius: 10, background: COLOR.ink, color: "#fff", border: "none", fontSize: 13, fontWeight: 600, fontFamily: FONT.sans, cursor: autoFilling ? "not-allowed" : "pointer", opacity: autoFilling ? 0.7 : 1, display: "flex", alignItems: "center", gap: 5, whiteSpace: "nowrap", flexShrink: 0 }}
-                  >
-                    {autoFilling ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
-                    {autoFilling ? "Fetching…" : "Auto-fill"}
-                  </button>
-                </div>
-                <p style={{ fontSize: 11, color: COLOR.ink3, marginTop: 4, fontFamily: FONT.sans }}>Paste the Maps link and tap Auto-fill to fetch name, rating, distance &amp; photo</p>
               </FormField>
 
               <FormField label="Cover Image">
