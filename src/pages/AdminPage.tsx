@@ -25,16 +25,6 @@ function fmtDist(km: number) {
   return `${Math.round(km * 10) / 10} km · ~${Math.round((km / 30) * 60)} min drive`;
 }
 
-// Type declarations for Google Maps web components
-declare global {
-  namespace JSX {
-    interface IntrinsicElements {
-      "gmpx-api-loader": React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement>, HTMLElement> & { key?: string; "solution-channel"?: string };
-      "gmpx-place-picker": React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement>, HTMLElement> & { placeholder?: string; style?: React.CSSProperties };
-    }
-  }
-}
-
 interface Props { user: User; }
 
 const CATEGORIES = ["food", "cafe", "nightlife", "travel"];
