@@ -4,7 +4,7 @@
  * Mobile: cover top, form below
  * Cover image upload via Supabase Storage
  */
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
 import {
   ArrowLeft,
   Camera,
@@ -23,7 +23,7 @@ import { SECTIONS, sectionByCode, type SectionCode } from "../lib/sections";
 import { COLOR, FONT, EVENT_CATEGORIES, SUBCATEGORIES, CATEGORY_COLOR } from "../lib/pulseTheme";
 import { tap } from "../lib/haptics";
 
-type Props = { user: User; onDone: () => void; prefillVenue?: string; editSession?: Session };
+type Props = { user: User; onDone: () => void; prefillVenue?: string; editSession?: Session; draftToken?: string };
 
 /* ─── Cover gradient themes ─── */
 const COVER_GRADIENTS = [
@@ -34,7 +34,7 @@ const COVER_GRADIENTS = [
   { id: "forest",  from: "#2d3436", to: "#00b894", via: "#55efc4" },
 ];
 
-export default function SessionNew({ user, onDone, prefillVenue, editSession }: Props) {
+export default function SessionNew({ user, onDone, prefillVenue, editSession, draftToken }: Props) {
   const { createSession } = useSessions(user);
   const isEdit = !!editSession;
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -52,11 +52,54 @@ export default function SessionNew({ user, onDone, prefillVenue, editSession }: 
   const [showOptions, setShowOptions] = useState(false);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [draftId, setDraftId] = useState<string | undefined>();
 
   // Cover image
   const [coverFile, setCoverFile] = useState<File | null>(null);
   const [coverPreview, setCoverPreview] = useState<string | null>(editSession?.cover_image_url ?? null);
   const [coverGradient, setCoverGradient] = useState(COVER_GRADIENTS[0].id);
+
+  // Load bot draft if token provided (magic link from WhatsApp bot)
+  useEffect(() => {
+    if (!draftToken) return;
+    (async () => {
+      const { data, error } = await supabase
+        .from("bot_event_drafts")
+        .select("*")
+        .eq("token", draftToken)
+        .is("consumed_at", null)
+        .gt("expires_at", new Date().toISOString())
+        .maybeSingle();
+
+      if (error || !data) {
+        console.warn("[SessionNew] draft not found or expired:", draftToken);
+        return;
+      }
+
+      const p = data.parsed_payload as {
+        title?: string;
+        description?: string;
+        starts_at?: string;
+        ends_at?: string;
+        venue?: string;
+        category?: EventCategory;
+        subcategory?: string;
+        tags?: Interest[];
+        image_url?: string;
+      };
+
+      setDraftId(data.id as string);
+      if (p.title) setTitle(p.title);
+      if (p.description) setDescription(p.description);
+      if (p.starts_at) setStartsAt(toLocalDatetime(p.starts_at));
+      if (p.ends_at) setEndsAt(toLocalDatetime(p.ends_at));
+      if (p.venue) setVenue(p.venue);
+      if (p.category) setCategory(p.category);
+      if (p.subcategory) setSubcategory(p.subcategory);
+      if (p.tags?.length) setTags(p.tags);
+      if (p.image_url) setCoverPreview(p.image_url);
+    })();
+  }, [draftToken]);
 
   const subcategories = category ? SUBCATEGORIES[category] : [];
   const catColor = category ? CATEGORY_COLOR[category.toLowerCase()] : null;
@@ -138,6 +181,15 @@ export default function SessionNew({ user, onDone, prefillVenue, editSession }: 
       };
       console.log("[SessionNew] creating session:", payload);
       await createSession(payload as Partial<Session>);
+
+      // Mark bot draft as consumed (so it can't be re-used)
+      if (draftId) {
+        await supabase
+          .from("bot_event_drafts")
+          .update({ consumed_at: new Date().toISOString() })
+          .eq("id", draftId);
+      }
+
       onDone();
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : "Unknown error";

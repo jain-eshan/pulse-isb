@@ -108,6 +108,7 @@ export default function App() {
   const [creating, setCreating] = useState(false);
   const [editingSession, setEditingSession] = useState<Session | null>(null);
   const [prefillVenue, setPrefillVenue] = useState<string | undefined>();
+  const [draftToken, setDraftToken] = useState<string | undefined>();
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
 
   useEffect(() => {
@@ -126,10 +127,21 @@ export default function App() {
 
   const tab: Tab = PATH_TO_TAB[location.pathname] ?? "sessions";
 
-  // Deep-link: ?session=<id>
+  // Deep-links: ?session=<id> and ?draft=<token>
   useEffect(() => {
     if (!user) return;
     const params = new URLSearchParams(location.search);
+
+    // ?draft=<token>  — open create form pre-filled from bot draft
+    const draft = params.get("draft");
+    if (draft) {
+      setDraftToken(draft);
+      setCreating(true);
+      navigate("/", { replace: true });
+      return;
+    }
+
+    // ?session=<id>  — open session detail drawer
     const sid = params.get("session");
     if (!sid) return;
     (async () => {
@@ -262,7 +274,8 @@ export default function App() {
             user={user}
             prefillVenue={prefillVenue}
             editSession={editingSession ?? undefined}
-            onDone={() => { setCreating(false); setEditingSession(null); setPrefillVenue(undefined); }}
+            draftToken={draftToken}
+            onDone={() => { setCreating(false); setEditingSession(null); setPrefillVenue(undefined); setDraftToken(undefined); }}
           />
         ) : bgPage}
       </main>

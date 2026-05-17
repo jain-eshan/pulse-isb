@@ -41,7 +41,7 @@ export function buildIcs(ev: IcsEvent): string {
     "CALSCALE:GREGORIAN",
     "METHOD:PUBLISH",
     "BEGIN:VEVENT",
-    `UID:${ev.id}@pulse.eshanjain.in`,
+    `UID:${ev.id}@pulse-isb.vercel.app`,
     `DTSTAMP:${dtStamp}`,
     `DTSTART:${dtStart}`,
     `DTEND:${dtEnd}`,
