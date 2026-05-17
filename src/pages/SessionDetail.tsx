@@ -34,9 +34,10 @@ interface Attendee {
 
 type Props = {
   session: Session;
-  user: User;
+  user: User | null;
   onBack: () => void;
   onEdit?: (session: Session) => void;
+  onSignIn?: () => void;
 };
 
 function isOnlineLink(venue?: string): boolean {
@@ -45,17 +46,18 @@ function isOnlineLink(venue?: string): boolean {
   return v.includes("zoom.us") || v.includes("meet.google.com") || v.includes("teams.microsoft.com") || v.startsWith("http");
 }
 
-export default function SessionDetail({ session, user, onBack: _onBack, onEdit }: Props) {
+export default function SessionDetail({ session, user, onBack: _onBack, onEdit, onSignIn }: Props) {
   const { rsvp } = useSessions(user);
   const [attendees, setAttendees] = useState<Attendee[]>([]);
   const [busy, setBusy] = useState(false);
   const [shareCopied, setShareCopied] = useState(false);
   const [showCalPrompt, setShowCalPrompt] = useState(false);
 
-  const myStatus = attendees.find((a) => a.user_id === user.id)?.status;
+  const isGuest = !user;
+  const myStatus = user ? attendees.find((a) => a.user_id === user.id)?.status : undefined;
   const goingList = attendees.filter((a) => a.status === "going");
   const goingCount = goingList.length;
-  const isCreator = session.creator_id === user.id;
+  const isCreator = user ? session.creator_id === user.id : false;
 
   const startsAt = new Date(session.starts_at);
   const today = isToday(startsAt);
@@ -574,7 +576,26 @@ export default function SessionDetail({ session, user, onBack: _onBack, onEdit }
           padding: "12px 16px 16px",
         }}
       >
-        {myStatus === "going" ? (
+        {isGuest ? (
+          /* Guest view: sign-in prompt */
+          <button
+            onClick={onSignIn}
+            style={{
+              width: "100%",
+              padding: 14,
+              borderRadius: 14,
+              background: COLOR.navy,
+              color: "#fff",
+              fontSize: 14,
+              fontWeight: 700,
+              border: "none",
+              cursor: "pointer",
+              fontFamily: FONT.sans,
+            }}
+          >
+            Sign in to RSVP
+          </button>
+        ) : myStatus === "going" ? (
           <div style={{ display: "flex", gap: 8 }}>
             <div
               style={{

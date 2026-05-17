@@ -109,6 +109,7 @@ export default function App() {
   const [editingSession, setEditingSession] = useState<Session | null>(null);
   const [prefillVenue, setPrefillVenue] = useState<string | undefined>();
   const [draftToken, setDraftToken] = useState<string | undefined>();
+  const [publicSession, setPublicSession] = useState<Session | null>(null);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
 
   useEffect(() => {
@@ -127,12 +128,34 @@ export default function App() {
 
   const tab: Tab = PATH_TO_TAB[location.pathname] ?? "sessions";
 
-  // Deep-links: ?session=<id> and ?draft=<token>
+  // Public deep-link: ?session=<id> — works even without login
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const sid = params.get("session");
+    if (!sid) return;
+
+    (async () => {
+      const { data } = await supabase
+        .from("sessions")
+        .select("*, creator:users!sessions_creator_id_fkey(id,name,avatar_url,section), rsvps(user_id,status)")
+        .eq("id", sid)
+        .maybeSingle();
+      if (data) {
+        if (user) {
+          setOpenSession(data as unknown as Session);
+        } else {
+          setPublicSession(data as unknown as Session);
+        }
+      }
+      navigate("/", { replace: true });
+    })();
+  }, [location.search]);
+
+  // Deep-links that require auth: ?draft=<token>
   useEffect(() => {
     if (!user) return;
     const params = new URLSearchParams(location.search);
 
-    // ?draft=<token>  — open create form pre-filled from bot draft
     const draft = params.get("draft");
     if (draft) {
       setDraftToken(draft);
@@ -141,18 +164,11 @@ export default function App() {
       return;
     }
 
-    // ?session=<id>  — open session detail drawer
-    const sid = params.get("session");
-    if (!sid) return;
-    (async () => {
-      const { data } = await supabase
-        .from("sessions")
-        .select("*, creator:users!sessions_creator_id_fkey(id,name,avatar_url,section), rsvps(user_id,status)")
-        .eq("id", sid)
-        .maybeSingle();
-      if (data) setOpenSession(data as unknown as Session);
-      navigate("/", { replace: true });
-    })();
+    // If there's a public session pending and user just logged in, promote it
+    if (publicSession) {
+      setOpenSession(publicSession);
+      setPublicSession(null);
+    }
   }, [user, location.search]);
 
   if (loading) {
@@ -162,6 +178,48 @@ export default function App() {
           className="w-6 h-6 rounded-full animate-spin"
           style={{ border: `2px solid ${COLOR.border}`, borderTopColor: COLOR.navy }}
         />
+      </div>
+    );
+  }
+
+  // Public event page — viewable without login
+  if (!user && publicSession) {
+    return (
+      <div style={{ minHeight: "100vh", background: COLOR.bg, display: "flex", flexDirection: "column" }}>
+        {/* Minimal header */}
+        <div style={{
+          padding: "12px 16px",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          borderBottom: `1px solid ${COLOR.borderLight}`,
+          background: "#fff",
+        }}>
+          <Logo size={28} />
+          <button
+            onClick={() => { setPublicSession(null); }}
+            style={{
+              padding: "8px 16px",
+              borderRadius: 10,
+              background: COLOR.navy,
+              color: "#fff",
+              fontSize: 13,
+              fontWeight: 700,
+              border: "none",
+              cursor: "pointer",
+            }}
+          >
+            Sign in
+          </button>
+        </div>
+        <div style={{ flex: 1, overflow: "auto" }}>
+          <SessionDetail
+            session={publicSession}
+            user={null}
+            onBack={() => setPublicSession(null)}
+            onSignIn={() => setPublicSession(null)}
+          />
+        </div>
       </div>
     );
   }
