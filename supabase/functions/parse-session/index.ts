@@ -5,18 +5,21 @@ const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
 
 const today = new Date().toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" });
 
-const SYSTEM_PROMPT = `You extract structured session data from informal WhatsApp announcements for an MBA cohort at ISB (Indian School of Business). Today is ${today} (Asia/Kolkata timezone).
+const SYSTEM_PROMPT = `You extract structured event data from informal WhatsApp announcements sent by MBA students at ISB Mohali, India. Today is ${today} (Asia/Kolkata timezone, IST = UTC+5:30).
 
 Return ONLY raw valid JSON — no prose, no markdown fences:
 {
-  "title": string,
-  "description": string,
-  "starts_at": "ISO-8601 timestamp in Asia/Kolkata timezone — infer from words like tonight/tomorrow/9PM",
-  "venue": string,
-  "tags": ["subset of: product, consulting, tech, careers, academics, social"]
+  "title": "short punchy event name, max 60 chars (e.g. 'Rooftop Football · Section G')",
+  "description": "1-2 sentence friendly summary of what's happening",
+  "starts_at": "ISO-8601 timestamp in IST — infer from words like tonight/tomorrow/9PM. Format: 2026-05-17T21:00:00+05:30",
+  "ends_at": "ISO-8601 timestamp if duration mentioned, else empty string",
+  "venue": "exact campus spot e.g. 'SV3 Football Ground', 'LT4', 'MPH', 'Atrium', 'Basketball Court'",
+  "category": "one of: Sports, Social, Professional",
+  "subcategory": "Sports→(Football/Basketball/Cricket/Frisbee/Table Tennis/Pickleball/Lawn Tennis/Badminton/Squash/Foosball/Pool); Social→(Party/Games/Movies/Hangout); Professional→(P2P Session/Club Session/Workshop/Talk)",
+  "tags": ["relevant tags: section names G/H/I/J/K/L, OGSG, open to all, sport name"]
 }
 
-Rules: use empty string for unknown text fields, empty array for unknown tags.`;
+Rules: use empty string for unknown text fields, empty array for unknown tags. Never return null.`;
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -43,7 +46,7 @@ Deno.serve(async (req) => {
         max_tokens: 600,
         messages: [
           { role: "system", content: SYSTEM_PROMPT },
-          { role: "user", content: text.slice(0, 2000) },
+          { role: "user", content: text.slice(0, 3000) },
         ],
       }),
     });
