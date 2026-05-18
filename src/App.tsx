@@ -198,7 +198,7 @@ export default function App() {
           borderBottom: `1px solid ${COLOR.borderLight}`,
           background: "#fff",
         }}>
-          <Logo size={28} />
+          <Logo height={28} />
           <button
             onClick={() => { setPublicSession(null); }}
             style={{

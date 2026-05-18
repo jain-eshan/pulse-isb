@@ -158,7 +158,7 @@ export default function WelcomeGuide({ onFinish }: Props) {
         alignItems: "center",
         justifyContent: "space-between",
       }}>
-        <Logo size={28} />
+        <Logo height={28} />
         <button
           onClick={() => { tap(); onFinish(); }}
           style={{
