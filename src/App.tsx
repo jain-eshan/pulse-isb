@@ -1,13 +1,14 @@
 import { Component, useEffect, useState } from "react";
 import type { ErrorInfo, ReactNode } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { Calendar, Compass, MapPin, Plus, User as UserIcon, ShieldCheck, ChevronLeft, Maximize2, Share2 } from "lucide-react";
+import { Calendar, Compass, MapPin, Plus, User as UserIcon, ShieldCheck, ChevronLeft, Maximize2, Share2, HelpCircle } from "lucide-react";
 import { useAuth } from "./hooks/useAuth";
 import { useLocationBroadcast } from "./hooks/useLocation";
 import { useCampusActivity } from "./hooks/useCampusActivity";
 import { supabase } from "./lib/supabase";
 import LandingPage from "./pages/LandingPage";
 import Onboarding from "./pages/Onboarding";
+import WelcomeGuide from "./pages/WelcomeGuide";
 import Sessions from "./pages/Sessions";
 import SessionDetail from "./pages/SessionDetail";
 import SessionNew from "./pages/SessionNew";
@@ -110,6 +111,8 @@ export default function App() {
   const [prefillVenue, setPrefillVenue] = useState<string | undefined>();
   const [draftToken, setDraftToken] = useState<string | undefined>();
   const [publicSession, setPublicSession] = useState<Session | null>(null);
+  const [guideSeen, setGuideSeen] = useState(false);
+  const [showGuide, setShowGuide] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
 
   useEffect(() => {
@@ -226,6 +229,10 @@ export default function App() {
 
   if (!user) return <LandingPage />;
   if (!user.onboarded_at) {
+    // Show feature explainer guide first, then onboarding questions
+    if (!guideSeen) {
+      return <WelcomeGuide onFinish={() => setGuideSeen(true)} />;
+    }
     return <Onboarding user={user} onComplete={(updates) => updateUser(updates)} />;
   }
 
@@ -311,6 +318,14 @@ export default function App() {
             </button>
           </nav>
           <div className="flex-1" />
+          <button
+            onClick={() => { tap(); setShowGuide(true); }}
+            className="flex items-center gap-3 px-3 py-2.5 rounded-[10px] text-left transition-colors mb-1"
+            style={{ background: "transparent", color: COLOR.ink3 }}
+          >
+            <HelpCircle size={16} strokeWidth={1.75} />
+            <span className="text-sm" style={{ fontWeight: 500 }}>Guide</span>
+          </button>
           {user.is_admin && (
             <button
               onClick={() => handleTabClick("admin")}
@@ -531,7 +546,7 @@ export default function App() {
       {/* Mobile header */}
       {!hideChrome && (
         <header
-          className="md:hidden fixed top-0 left-0 right-0 z-30 px-5 py-3 flex items-center border-b"
+          className="md:hidden fixed top-0 left-0 right-0 z-30 px-5 py-3 flex items-center justify-between border-b"
           style={{
             background: "rgba(255,255,255,0.92)",
             borderColor: COLOR.borderLight,
@@ -540,10 +555,34 @@ export default function App() {
           }}
         >
           <LogoMark size={28} />
+          <button
+            onClick={() => { tap(); setShowGuide(true); }}
+            style={{
+              width: 32,
+              height: 32,
+              borderRadius: 10,
+              border: `1.5px solid ${COLOR.border}`,
+              background: "transparent",
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+            title="Guide"
+          >
+            <HelpCircle size={16} strokeWidth={1.75} color={COLOR.ink3} />
+          </button>
         </header>
       )}
 
       {!hideChrome && <div className="md:hidden h-[52px] absolute top-0" />}
+
+      {/* Guide overlay — reopenable from sidebar/header */}
+      {showGuide && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 300, background: "#fff" }}>
+          <WelcomeGuide onFinish={() => setShowGuide(false)} />
+        </div>
+      )}
     </div>
   );
 }
